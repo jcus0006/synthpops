@@ -140,13 +140,9 @@ def make_contacts(pop,
 
     log.debug('  starting...' + checkmem())
 
-    # TODO: include age-based sex ratios
-    sexes = np.random.randint(2, size=len(age_by_uid))
-
     for u, uid in enumerate(age_by_uid):
         popdict[uid] = {}
         popdict[uid]['age'] = int(age_by_uid[uid])
-        popdict[uid]['sex'] = sexes[u]
         popdict[uid]['loc'] = None
         popdict[uid]['contacts'] = {}
         if use_ltcf:

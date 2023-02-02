@@ -18,7 +18,11 @@ from . import workplaces as spw
 from . import contact_networks as spcnx
 from . import plotting as sppl
 from . import people as spp
-
+import time
+import json
+import os
+from .util.NpEncoder import NpEncoder
+import random
 
 __all__ = ['Pop', 'make_population', 'generate_synthetic_population']
 
@@ -58,7 +62,8 @@ class Pop(sc.prettyobj):
                  household_method='infer_ages',
                  smooth_ages=False,
                  window_length=7,
-                 do_make=True
+                 do_make=True,
+                 save_to_json_file=False
                  ):
         '''
         Make a full population network including both people (ages, sexes) and
@@ -178,6 +183,8 @@ class Pop(sc.prettyobj):
         else:
             self.layers = ['H', 'S', 'W']
         self.layer_mappings = dict(H='Households', S='Schools', W='Workplaces', LTCF='Long Term Care facilities')
+
+        self.save_to_json_file = save_to_json_file
 
         # Handle the seed
         if self.rand_seed is not None:
@@ -324,9 +331,7 @@ class Pop(sc.prettyobj):
         hha_by_size = spdata.get_head_age_by_size_distr(**loc_pars)
 
         if household_method == 'fixed_ages':
-
             homes_dic, homes = sphh.generate_all_households_fixed_ages(n_nonltcf, hh_sizes, hha_by_size, hha_brackets, cm_age_brackets, cm_age_by_brackets, contact_matrices, ages_left_to_assign)
-
         else:
             log.debug("defaulting to 'infer_ages' household generation method. See method notes for description.")
             homes_dic, homes = sphh.generate_all_households_infer_ages(n, n_nonltcf, hh_sizes, hha_by_size, hha_brackets, cm_age_brackets, cm_age_by_brackets, contact_matrices, ltcf_adjusted_age_dist, ages_left_to_assign)
@@ -336,6 +341,9 @@ class Pop(sc.prettyobj):
         homes_by_uids, age_by_uid = sphh.assign_uids_by_homes(homes)  # include facilities to assign ids
         age_by_uid_arr = np.array([age_by_uid[i] for i in range(self.n)], dtype=int)
         self.age_by_uid = age_by_uid_arr
+
+        # JC - Assign age based demographics
+        self.sex_by_uid, self.empstatus_by_uid, self.empind_by_uid, self.empftpt_by_uid, self.edu_by_uid, self.lti_by_uid, self.bmi_by_uid = self.assign_demographics(age_by_uid)
 
         facilities_by_uid_lists = homes_by_uids[0:len(facilities)]
 
@@ -435,20 +443,31 @@ class Pop(sc.prettyobj):
                                                                       use_default=use_default)
         else:
             facilities_staff_uid_lists = []
+
+        # JC - Synthpops method is being changed
+
         # Generate non-school workplace sizes needed to send everyone to work
+        # workplace_size_brackets = spdata.get_workplace_size_brackets(**loc_pars)
+        # workplace_size_distr_by_brackets = spdata.get_workplace_size_distr_by_brackets(**loc_pars)
+        # workplace_sizes = spw.generate_workplace_sizes(workplace_size_distr_by_brackets, workplace_size_brackets, workers_by_age_to_assign_count)
+
+        # # Assign all workers who are not staff at schools to workplaces
+        # workplace_age_lists, workplace_uid_lists, potential_worker_uids, potential_worker_uids_by_age, workers_by_age_to_assign_count = spw.assign_rest_of_workers(workplace_sizes,
+        #                                                                                                                                                            potential_worker_uids,
+        #                                                                                                                                                            potential_worker_uids_by_age,
+        #                                                                                                                                                            workers_by_age_to_assign_count,
+        #                                                                                                                                                            age_by_uid,
+        #                                                                                                                                                            cm_age_brackets,
+        #                                                                                                                                                            cm_age_by_brackets,
+        #                                                                                                                                                            contact_matrices)
+
+        # JC - Custom Workplace creation & assignment implementation
+        workplace_uid_lists = None
+
+
+        # Get workplaze size distributions
         workplace_size_brackets = spdata.get_workplace_size_brackets(**loc_pars)
         workplace_size_distr_by_brackets = spdata.get_workplace_size_distr_by_brackets(**loc_pars)
-        workplace_sizes = spw.generate_workplace_sizes(workplace_size_distr_by_brackets, workplace_size_brackets, workers_by_age_to_assign_count)
-
-        # Assign all workers who are not staff at schools to workplaces
-        workplace_age_lists, workplace_uid_lists, potential_worker_uids, potential_worker_uids_by_age, workers_by_age_to_assign_count = spw.assign_rest_of_workers(workplace_sizes,
-                                                                                                                                                                   potential_worker_uids,
-                                                                                                                                                                   potential_worker_uids_by_age,
-                                                                                                                                                                   workers_by_age_to_assign_count,
-                                                                                                                                                                   age_by_uid,
-                                                                                                                                                                   cm_age_brackets,
-                                                                                                                                                                   cm_age_by_brackets,
-                                                                                                                                                                   contact_matrices)
 
         # remove facilities from homes --- have already assigned each person a uid
         homes_by_uids = homes_by_uids[len(facilities_by_uid_lists):]
@@ -504,7 +523,349 @@ class Pop(sc.prettyobj):
         self.set_layer_classes()
         self.clean_up_layer_info()
 
+        # Save as JSON file
+
+        if self.save_to_json_file:
+            # self.convert_int32_properties(population)
+
+            timestr = str(int(time.time()))
+            newpath = "data\\" + timestr
+
+            if not os.path.exists(newpath):
+                os.makedirs(newpath)
+
+            agents_filename = "agents.json"
+            homes_filename = "homes.json"
+            students_filename = "students.json"
+            teachers_filename = "teachers.json"
+            nonteachingstaff_filename = "nonteachingstaff.json"
+            facilities_filename = "facilities.json"
+            facilitiesstaff_filename = "facilitiesstaff.json"
+
+            with open(os.path.join(newpath, agents_filename), 'w', encoding='utf-8') as f:
+                json.dump(population, f, ensure_ascii=False, indent=4, cls=NpEncoder) 
+
+            with open(os.path.join(newpath, homes_filename), 'w', encoding='utf-8') as f:
+                json.dump(homes_by_uids, f, ensure_ascii=False, indent=4, cls=NpEncoder)
+
+            with open(os.path.join(newpath, students_filename), 'w', encoding='utf-8') as f:
+                json.dump(student_uid_lists, f, ensure_ascii=False, indent=4, cls=NpEncoder)
+
+            with open(os.path.join(newpath, teachers_filename), 'w', encoding='utf-8') as f:
+                json.dump(teacher_uid_lists, f, ensure_ascii=False, indent=4, cls=NpEncoder)   
+
+            with open(os.path.join(newpath, nonteachingstaff_filename), 'w', encoding='utf-8') as f:
+                json.dump(non_teaching_staff_uid_lists, f, ensure_ascii=False, indent=4, cls=NpEncoder)   
+            
+            with open(os.path.join(newpath, facilities_filename), 'w', encoding='utf-8') as f:
+                json.dump(facilities_by_uid_lists, f, ensure_ascii=False, indent=4, cls=NpEncoder)   
+
+            with open(os.path.join(newpath, facilitiesstaff_filename), 'w', encoding='utf-8') as f:
+                json.dump(facilities_staff_uid_lists, f, ensure_ascii=False, indent=4, cls=NpEncoder)   
+
         return population
+
+    def assign_demographics(self, age_by_uid):
+        # sex
+        sex_byage_distribution = spdata.read_sexbyage_distributions(**self.loc_pars)
+        
+        sexes = None
+
+        if sex_byage_distribution is None:
+            sexes = np.random.randint(2, size=len(age_by_uid))
+        else:
+            # Create a lookup table to map age ranges to gender percentages
+            age_range_to_gender_percentages = [(min_age, max_age, male_percent, female_percent) for min_age, max_age, male_percent, female_percent in sex_byage_distribution]
+            
+            # Pre-compute the CDFs for each age group's gender percentage
+            sexes_cdfs = [np.cumsum([male_percent, female_percent]) for _, _, male_percent, female_percent in sex_byage_distribution]
+
+        # Employment status by age distributions (male/female)
+        employmentstatus_byage_male_distribution, employmentstatus_byage_female_distribution = spdata.read_employmentstatusbyage_distributions(**self.loc_pars)
+
+        if employmentstatus_byage_male_distribution is not None:
+            # Create a lookup table to map age ranges to employment status percentages
+            age_range_to_empstatus_male_percentages = [(min_age, max_age, employed, unemployed, inactive) for min_age, max_age, employed, unemployed, inactive in employmentstatus_byage_male_distribution]
+            # Pre-compute the CDFs for each age group's employment status percentage
+            empstatus_male_cdfs = [np.cumsum([employed, unemployed, inactive]) for _, _, employed, unemployed, inactive in employmentstatus_byage_male_distribution]
+
+        if employmentstatus_byage_female_distribution is not None:
+            # Create a lookup table to map age ranges to employment status percentages
+            age_range_to_empstatus_female_percentages = [(min_age, max_age, normal, overweight, obese) for min_age, max_age, normal, overweight, obese in employmentstatus_byage_female_distribution]
+            # Pre-compute the CDFs for each age group's employment status percentage
+            empstatus_female_cdfs = [np.cumsum([employed, unemployed, inactive]) for _, _, employed, unemployed, inactive in employmentstatus_byage_female_distribution]
+
+        # Employment Industry (Full Time)
+
+        employment_industry_male_dist, employment_industry_female_dist, employment_industry_ftpt_male_dist, employment_industry_ftpt_female_dist = spdata.read_employment_distributions(**self.loc_pars)
+
+        
+        if employment_industry_male_dist is not None:
+            # Create CDF
+            percents = [x[1] for x in employment_industry_male_dist]
+            empind_male_cdfs = [sum(percents[:i+1])/sum(percents) for i in range(len(percents))]
+
+        if employment_industry_female_dist is not None:
+            # Create CDF
+            percents = [x[1] for x in employment_industry_female_dist]
+            empind_female_cdfs = [sum(percents[:i+1])/sum(percents) for i in range(len(percents))]
+
+        if employment_industry_ftpt_male_dist is not None:
+            # Create CDF
+            empind_male_ftpt_cdfs = [np.cumsum([ft, ptwithft, ptwithoutft]) for _, ft, ptwithft, ptwithoutft in employment_industry_ftpt_male_dist]
+
+        if employment_industry_ftpt_female_dist is not None:
+            # Create CDF
+            empind_female_ftpt_cdfs = [np.cumsum([ft, ptwithft, ptwithoutft]) for _, ft, ptwithft, ptwithoutft in employment_industry_ftpt_female_dist]
+
+        # Education
+
+        education_byage_male_distribution, education_byage_female_distribution = spdata.read_educationbyage_distributions(**self.loc_pars)
+
+        if education_byage_male_distribution is not None:
+            # Create a lookup table to map age ranges to education percentages
+            age_range_to_education_male_percentages = [(min_age, max_age, noschooling, primary, lowsecondary, upsecondary, postsecondary, tertiary) for min_age, max_age, noschooling, primary, lowsecondary, upsecondary, postsecondary, tertiary in education_byage_male_distribution]
+            # Pre-compute the CDFs for each age group's education percentage
+            edu_male_cdfs = [np.cumsum([noschooling, primary, lowsecondary, upsecondary, postsecondary, tertiary]) for _, _, noschooling, primary, lowsecondary, upsecondary, postsecondary, tertiary in education_byage_male_distribution]
+
+        if education_byage_female_distribution is not None:
+            # Create a lookup table to map age ranges to education percentages
+            age_range_to_education_female_percentages = [(min_age, max_age, noschooling, primary, lowsecondary, upsecondary, postsecondary, tertiary) for min_age, max_age, noschooling, primary, lowsecondary, upsecondary, postsecondary, tertiary in education_byage_female_distribution]
+            # Pre-compute the CDFs for each age group's education percentage
+            edu_female_cdfs = [np.cumsum([noschooling, primary, lowsecondary, upsecondary, postsecondary, tertiary]) for _, _, noschooling, primary, lowsecondary, upsecondary, postsecondary, tertiary in education_byage_female_distribution]
+
+        # Occupations
+
+        # occupation_gender_distribution = None
+        # occupation_byage_distribution = None
+        # occupation_gender_distribution, occupation_byage_distribution = spdata.read_occupation_distributions(**loc_pars)
+
+        # if occupation_gender_distribution is not None:
+        #     # Create a lookup table to map occupations to gender percentages
+        #     gender_to_occupation_percentages = [(occupation, male_percent, female_percent) for occupation, male_percent, female_percent in occupation_gender_distribution]
+        #     # Pre-compute the CDFs for each occupation's gender percentage
+        #     ocu_gender_cdfs = [np.cumsum([occupation, male_percent, female_percent]) for occupation, male_percent, female_percent in occupation_gender_distribution]
+
+        # # occ1: armedforces, occ2: managers, occ3: professionals, occ4: technicians/associate professionals, occ5: clerical support workers
+        # # occ6: service sales workers, occ7: skilled agricultural / forestry / fishery, occ8: craft trades workers, occ9: plant machine operators, occ10: elementary occupations
+        # if occupation_byage_distribution is not None:
+        #     # Create a lookup table to map age ranges to education percentages
+        #     age_range_to_occupation_percentages = [(min_age, max_age, occ1, occ2, occ3, occ4, occ5, occ6, occ7, occ8, occ9, occ10) for min_age, max_age, occ1, occ2, occ3, occ4, occ5, occ6, occ7, occ8, occ9, occ10 in occupation_byage_distribution]
+        #     # Pre-compute the CDFs for each age group's education percentage
+        #     ocu_age_cdfs = [np.cumsum([occ1, occ2, occ3, occ4, occ5, occ6, occ7, occ8, occ9, occ10]) for _, _, occ1, occ2, occ3, occ4, occ5, occ6, occ7, occ8, occ9, occ10 in occupation_byage_distribution]
+
+        # Long-term illness
+
+        longtermillness_byage_male_distribution, longtermillness_byage_female_distribution = spdata.read_longtermillness_byage_distributions(**self.loc_pars)
+
+        if longtermillness_byage_male_distribution is not None:
+            # Create a lookup table to map age ranges to long-term illness percentages
+            age_range_to_longtermillness_male_percentages = [(min_age, max_age, withillness, withoutillness) for min_age, max_age, withillness, withoutillness in longtermillness_byage_male_distribution]
+            # Pre-compute the CDFs for each age group's long-term illness percentage
+            lti_male_cdfs = [np.cumsum([withillness, withoutillness]) for _, _, withillness, withoutillness in longtermillness_byage_male_distribution]
+
+        if longtermillness_byage_female_distribution is not None:
+            # Create a lookup table to map age ranges to long-term illness percentages
+            age_range_to_longtermillness_female_percentages = [(min_age, max_age, withillness, withoutillness) for min_age, max_age, withillness, withoutillness in longtermillness_byage_female_distribution]
+            # Pre-compute the CDFs for each age group's long-term illness percentage
+            lti_female_cdfs = [np.cumsum([withillness, withoutillness]) for _, _, withillness, withoutillness in longtermillness_byage_female_distribution]
+
+        # Comorbidities
+
+        # numofcomorbidities_byage_distribution = spdata.read_numofcomorbidities_byage_distributions(**loc_pars)
+        # comorbiditytypes_byage_distribution = spdata.read_comorbiditytypes_byage_distributions(**loc_pars)
+
+        # BMI
+
+        bmi_byage_male_distribution, bmi_byage_female_distribution = spdata.read_bmibyage_distributions(**self.loc_pars)
+
+        if bmi_byage_male_distribution is not None:
+            # Create a lookup table to map age ranges to bmi percentages
+            age_range_to_bmi_male_percentages = [(min_age, max_age, normal, overweight, obese) for min_age, max_age, normal, overweight, obese in bmi_byage_male_distribution]
+            # Pre-compute the CDFs for each age group's bmi percentage
+            bmi_male_cdfs = [np.cumsum([normal, overweight, obese]) for _, _, normal, overweight, obese in bmi_byage_male_distribution]
+
+        if education_byage_female_distribution is not None:
+            # Create a lookup table to map age ranges to bmi percentages
+            age_range_to_bmi_female_percentages = [(min_age, max_age, normal, overweight, obese) for min_age, max_age, normal, overweight, obese in bmi_byage_female_distribution]
+            # Pre-compute the CDFs for each age group's bmi percentage
+            bmi_female_cdfs = [np.cumsum([normal, overweight, obese]) for _, _, normal, overweight, obese in bmi_byage_female_distribution]
+
+        sex_by_uid, empstatus_by_uid, empind_by_uid, empftpt_by_uid, edu_by_uid, lti_by_uid, bmi_by_uid = {}, {}, {}, {}, {}, {}, {}
+
+        for u, uid in enumerate(age_by_uid):
+            # sex
+            if sexes is not None:
+                sex_by_uid[uid] = sexes[u]
+            else:
+                age_group = None
+
+                # Determine the appropriate age group for the agent
+                for min_age, max_age, male_percent, female_percent in age_range_to_gender_percentages:
+                    if min_age <= int(age_by_uid[uid]) <= max_age:
+                        age_group = (min_age, max_age, male_percent, female_percent)
+                        break
+
+                # Assign a gender to the agent based on the CDF for the age group's gender percentage
+                age = age_range_to_gender_percentages.index(age_group)
+                cdf = sexes_cdfs[age]
+                gender = np.argmax(cdf > np.random.rand())
+
+                sex_by_uid[uid] = gender #0:male, 1:female
+
+            # employment status
+
+            if sex_by_uid[uid] == 0: #male
+                age_range_to_empstatus_percentages = age_range_to_empstatus_male_percentages
+                empstatus_cdfs = empstatus_male_cdfs
+            else:
+                age_range_to_empstatus_percentages = age_range_to_empstatus_female_percentages
+                empstatus_cdfs = empstatus_female_cdfs
+
+            age_group = None
+
+            for min_age, max_age, employed, unemployed, inactive in age_range_to_empstatus_percentages:
+                if min_age <= int(age_by_uid[uid]) <= max_age:
+                    age_group = (min_age, max_age, employed, unemployed, inactive)
+                    break
+
+            # Assign an Employment status to the agent based on the CDF for the age group's Employment status percentage
+            if age_group is not None:
+                age = age_range_to_empstatus_percentages.index(age_group)
+                cdf = empstatus_cdfs[age]
+                empstatus = np.argmax(cdf > np.random.rand())
+
+            empstatus_by_uid[uid] = empstatus # 0: employed, 1: unemployed. 2: inactive
+
+            # If employed, assign parttime or full time
+
+            if empstatus_by_uid[uid] == 0:
+                # If employed, assign industry and ft/ptwithft/ptwithoutft status
+                if sex_by_uid[uid] == 0: #male
+                    emp_industry_cdfs = empind_male_cdfs
+                    emp_industry_ftpt_cdfs = empind_male_ftpt_cdfs
+                else:
+                    emp_industry_cdfs = empind_female_cdfs
+                    emp_industry_ftpt_cdfs = empind_female_ftpt_cdfs
+
+                random_value = np.random.random()
+                industry_index = np.searchsorted(emp_industry_cdfs, random_value, side='right')
+                industry_ftp_cdf = emp_industry_ftpt_cdfs[industry_index]
+                ftpt_index = np.searchsorted(industry_ftp_cdf, random_value, side='right')
+
+                empind_by_uid[uid] = industry_index
+                empftpt_by_uid[uid] = ftpt_index
+
+            # Assign an appropriate education level
+
+            if sex_by_uid[uid] == 0: #male
+                age_range_to_education_percentages = age_range_to_education_male_percentages
+                education_cdfs = edu_male_cdfs
+            else:
+                age_range_to_education_percentages = age_range_to_education_female_percentages
+                education_cdfs = edu_female_cdfs
+
+            age_group = None
+
+            for min_age, max_age, noschooling, primary, lowsecondary, upsecondary, postsecondary, tertiary in age_range_to_education_percentages:
+                if min_age <= int(age_by_uid[uid]) <= max_age:
+                    age_group = (min_age, max_age, noschooling, primary, lowsecondary, upsecondary, postsecondary, tertiary)
+                    break
+
+            # Assign an education to the agent based on the CDF for the age group's education percentage
+            if age_group is not None:
+                age = age_range_to_education_percentages.index(age_group)
+                cdf = education_cdfs[age]
+                education = np.argmax(cdf > np.random.rand())
+            else:
+                education = 6
+
+            edu_by_uid[uid] = education #0:noschooling, 1:primary, 2:lowersecondary, 3:uppersecondary, 4:postsecondarynontertiary, 5:tertiary, 6:out-of-range (not assigned)
+
+            # Assign an Occupation (if applicable)
+
+            # age_group = None
+
+            # for min_age, max_age, occ1, occ2, occ3, occ4, occ5, occ6, occ7, occ8, occ9, occ10 in age_range_to_occupation_percentages:
+            #     if min_age <= int(age_by_uid[uid]) <= max_age:
+            #         age_group = (min_age, max_age, occ1, occ2, occ3, occ4, occ5, occ6, occ7, occ8, occ9, occ10)
+            #         break
+
+            # if age_group is not None:
+            #     # Assign occupation to agent based on gender and age
+            #     age = age_range_to_occupation_percentages.index(age_group)
+
+            #     if sex_by_uid[uid] == 0:
+            #         selectgender_percentages = [(x[0], x[1]) for x in gender_to_occupation_percentages]
+            #     else:
+            #         selectgender_percentages = [(x[0], x[2]) for x in gender_to_occupation_percentages]
+
+            #     occupation_probs = {}
+            #     for occupation, prob in selectgender_percentages:
+            #         occupation_probs[occupation] = prob * age_range_to_occupation_percentages[age][occupation + 1] # +1 (+ 2 to skip minage, maxage since 1 starts from 3rd index, -1 since starts from 0)
+
+            #     occupation_probs = {k: v / sum(occupation_probs.values() if v != 0 else 0) for k, v in occupation_probs.items()} # divide each value by the sum of all values to normalise
+                
+            #     if not all(value == 0 for value in occupation_probs.values()):
+            #         occupation = np.random.choice(list(occupation_probs.keys()), p=list(occupation_probs.values())) # choose an occupation based on the distribution
+            #     else:
+            #         occupation = None
+
+            #     ocu_by_uid[uid] = occupation
+            # else:
+            #     ocu_by_uid[uid] = None
+
+            # Assign a long-term illness based on age group (withillness/withoutillness)
+
+            if sex_by_uid[uid] == 0: #male
+                age_range_to_longtermillness_percentages = age_range_to_longtermillness_male_percentages
+                longtermillness_cdfs = lti_male_cdfs
+            else:
+                age_range_to_longtermillness_percentages = age_range_to_longtermillness_female_percentages
+                longtermillness_cdfs = lti_female_cdfs
+
+            age_group = None
+
+            for min_age, max_age, withillness, noillness in age_range_to_longtermillness_percentages:
+                if min_age <= int(age_by_uid[uid]) <= max_age:
+                    age_group = (min_age, max_age, withillness, noillness)
+                    break
+
+            # Assign with/without long-term illness to the agent based on the CDF for the age group's long-term illness percentage
+            if age_group is not None:
+                age = age_range_to_longtermillness_percentages.index(age_group)
+                cdf = longtermillness_cdfs[age]
+                longtermillness = np.argmax(cdf > np.random.rand())
+            else:
+                longtermillness = 6
+
+            lti_by_uid[uid] = longtermillness #0:withillness, 1:withoutillness
+
+            # Assign a BMI Category (Normal = 0, Overweight = 1, Obese = 2)
+
+            if sex_by_uid[uid] == 0: #male
+                age_range_to_bmi_percentages = age_range_to_bmi_male_percentages
+                bmi_cdfs = bmi_male_cdfs
+            else:
+                age_range_to_bmi_percentages = age_range_to_bmi_female_percentages
+                bmi_cdfs = bmi_female_cdfs
+
+            age_group = None
+
+            for min_age, max_age, normal, overweight, obese in age_range_to_bmi_percentages:
+                if min_age <= int(age_by_uid[uid]) <= max_age:
+                    age_group = (min_age, max_age, normal, overweight, obese)
+                    break
+
+            # Assign a BMI to the agent based on the CDF for the age group's BMI percentage
+            if age_group is not None:
+                age = age_range_to_bmi_percentages.index(age_group)
+                cdf = bmi_cdfs[age]
+                bmi = np.argmax(cdf > np.random.rand())
+
+            bmi_by_uid[uid] = bmi #0:normal, 1:overweight, 2:obese
+
+        return sex_by_uid, empstatus_by_uid, empind_by_uid, empftpt_by_uid, edu_by_uid, lti_by_uid, bmi_by_uid
 
     def set_layer_classes(self):
         """Add layer classes."""

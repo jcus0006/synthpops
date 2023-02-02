@@ -55,6 +55,144 @@ def calculate_which_nbrackets_to_use(location_data, nbrackets=None):
 
     return nbrackets
 
+def calculate_which_sex_nbrackets_to_use(location_data, nbrackets=None):
+    """
+    Calculate the number of age brackets to use by default.
+
+    Args:
+        nbrackets (int): the number of age brackets to use
+
+    Returns:
+        int: The number of age brackets to use.
+    """
+    if nbrackets is None:
+        nbrackets = [d.num_bins for d in location_data.sex_byage_distributions if d.num_bins is not None]
+        if len(nbrackets):
+            nbrackets = max(nbrackets)
+        else:
+            nbrackets = defaults.settings.nbrackets
+
+    return nbrackets
+
+def calculate_which_education_nbrackets_to_use(location_data, nbrackets=None):
+    """
+    Calculate the number of education brackets to use by default.
+
+    Args:
+        nbrackets (int): the number of education brackets to use
+
+    Returns:
+        int: The number of education brackets to use.
+    """
+    if nbrackets is None:
+        nbrackets = [d.num_bins for d in location_data.education_byage_distributions if d.num_bins is not None]
+        if len(nbrackets):
+            nbrackets = max(nbrackets)
+        else:
+            nbrackets = defaults.settings.nbrackets
+
+    return nbrackets
+
+def calculate_which_occupation_nbrackets_to_use(location_data, nbrackets=None):
+    """
+    Calculate the number of age brackets to use by default.
+
+    Args:
+        nbrackets (int): the number of age brackets to use
+
+    Returns:
+        int: The number of age brackets to use.
+    """
+    if nbrackets is None:
+        sex_nbrackets = [d.num_bins for d in location_data.occupation_bysex_distributions if d.num_bins is not None]
+        if len(sex_nbrackets):
+            sex_nbrackets = max(sex_nbrackets)
+        else:
+            sex_nbrackets = defaults.settings.nbrackets
+
+        age_nbrackets = [d.num_bins for d in location_data.occupation_byage_distributions if d.num_bins is not None]
+        if len(age_nbrackets):
+            age_nbrackets = max(age_nbrackets)
+        else:
+            age_nbrackets = defaults.settings.nbrackets   
+
+    return sex_nbrackets, age_nbrackets
+
+def calculate_which_longtermillness_nbrackets_to_use(location_data, nbrackets=None):
+    """
+    Calculate the number of age brackets to use by default.
+
+    Args:
+        nbrackets (int): the number of age brackets to use
+
+    Returns:
+        int: The number of age brackets to use.
+    """
+    if nbrackets is None:
+        nbrackets = [d.num_bins for d in location_data.longtermillness_byage_distributions if d.num_bins is not None]
+        if len(nbrackets):
+            nbrackets = max(nbrackets)
+        else:
+            nbrackets = defaults.settings.nbrackets
+
+    return nbrackets
+
+def calculate_which_bmi_nbrackets_to_use(location_data, nbrackets=None):
+    """
+    Calculate the number of bmi brackets to use by default.
+
+    Args:
+        nbrackets (int): the number of bmi brackets to use
+
+    Returns:
+        int: The number of bmi brackets to use.
+    """
+    if nbrackets is None:
+        nbrackets = [d.num_bins for d in location_data.bmi_byage_distributions if d.num_bins is not None]
+        if len(nbrackets):
+            nbrackets = max(nbrackets)
+        else:
+            nbrackets = defaults.settings.nbrackets
+
+    return nbrackets
+
+def calculate_which_employment_status_nbrackets_to_use(location_data, nbrackets=None):
+    """
+    Calculate the number of employment status brackets to use by default.
+
+    Args:
+        nbrackets (int): the number of employment status brackets to use
+
+    Returns:
+        int: The number of employment status brackets to use.
+    """
+    if nbrackets is None:
+        nbrackets = [d.num_bins for d in location_data.employment_status_byage_distributions if d.num_bins is not None]
+        if len(nbrackets):
+            nbrackets = max(nbrackets)
+        else:
+            nbrackets = defaults.settings.nbrackets
+
+    return nbrackets
+
+def calculate_which_employment_fulltime_nbrackets_to_use(location_data, nbrackets=None):
+    """
+    Calculate the number of employment brackets to use by default.
+
+    Args:
+        nbrackets (int): the number of employment brackets to use
+
+    Returns:
+        int: The number of employment brackets to use.
+    """
+    if nbrackets is None:
+        nbrackets = [d.num_bins for d in location_data.employment_byindustry_ftpt_distributions if d.num_bins is not None]
+        if len(nbrackets):
+            nbrackets = max(nbrackets)
+        else:
+            nbrackets = defaults.settings.nbrackets
+
+    return nbrackets
 
 def sanitize_location(location):
     """
@@ -144,7 +282,7 @@ def load_location(specific_location, state_location, country_location, revert_to
                      f"({specific_location}, {state_location}, {country_location}) "
                      f"from [{location_filepath}]")
         return location_object
-    except:
+    except Exception as e:
         logger.warn(f"Failed to load location [{specific_location}], "
                     f"state_location [{state_location}], "
                     f"country_location [{country_location}], reverting to default.")
@@ -196,6 +334,335 @@ def read_age_bracket_distr(datadir=None, location=None, state_location=None, cou
     r = dict(zip(np.arange(len(age_brackets)), percent))
     return r
 
+def read_sexbyage_distributions(datadir=None, location=None, state_location=None, country_location=None, nbrackets=None, file_path=None, use_default=False):
+    """
+    A dict of the sex distribution by age brackets. If use_default, then we'll
+    first try to look for location specific data and if that's not available
+    we'll use default data from settings.location,
+    settings.state_location, settings.country_location. This may not
+    be appropriate for the population under study so it's best to provide as
+    much data as you can for the specific population.
+
+    Args:
+        datadir (string)          : file path to the data directory
+        location (string)         : name of the location
+        state_location (string)   : name of the state the location is in
+        country_location (string) : name of the country the location is in
+        file_path (string)        : file path to user specified age bracket distribution data
+        use_default (bool)        : if True, try to first use the other parameters to find data specific to the location under study, otherwise returns default data drawing from the settings.location, settings.state_location, settings.country_location.
+
+    Returns:
+        dict: A dictionary of the age distribution by age bracket. Keys map to a
+        range of ages in that age bracket.
+
+    """
+    # Use default if no file for this location.
+    location_data = load_location(location, state_location, country_location, revert_to_default=use_default)
+    nbrackets = calculate_which_sex_nbrackets_to_use(location_data, nbrackets)
+    age_brackets = location_data.get_sex_byage_distribution(nbrackets)
+    # Use default if no data for this parameter.
+    if use_default and (age_brackets is None or len(age_brackets) == 0):
+        return read_sexbyage_distributions(location=defaults.settings.location,
+                                            state_location=defaults.settings.state_location,
+                                            country_location=defaults.settings.country_location,
+                                            use_default=False)
+    #percent = [age_bracket[2:] for age_bracket in age_brackets]
+    #r = dict(zip(np.arange(len(age_brackets)), age_brackets))
+    
+    age_groups = [(age_range[0], age_range[1], age_range[2], age_range[3]) for age_range in age_brackets]
+    return age_groups
+
+def read_educationbyage_distributions(datadir=None, location=None, state_location=None, country_location=None, nbrackets=None, file_path=None, use_default=False):
+    """
+    A dict of the education distribution by age brackets. If use_default, then we'll
+    first try to look for location specific data and if that's not available
+    we'll use default data from settings.location,
+    settings.state_location, settings.country_location. This may not
+    be appropriate for the population under study so it's best to provide as
+    much data as you can for the specific population.
+
+    Args:
+        datadir (string)          : file path to the data directory
+        location (string)         : name of the location
+        state_location (string)   : name of the state the location is in
+        country_location (string) : name of the country the location is in
+        file_path (string)        : file path to user specified age bracket distribution data
+        use_default (bool)        : if True, try to first use the other parameters to find data specific to the location under study, otherwise returns default data drawing from the settings.location, settings.state_location, settings.country_location.
+
+    Returns:
+        dict: A dictionary of the age distribution by age bracket. Keys map to a
+        range of ages in that age bracket.
+
+    """
+    # Use default if no file for this location.
+    location_data = load_location(location, state_location, country_location, revert_to_default=use_default)
+    nbrackets = calculate_which_education_nbrackets_to_use(location_data, nbrackets)
+    male_age_brackets, female_age_brackets = location_data.get_education_byage_distribution(nbrackets)
+    # Use default if no data for this parameter.
+    if use_default and (male_age_brackets is None or len(male_age_brackets) == 0) and (female_age_brackets is None or len(female_age_brackets) == 0):
+        return read_educationbyage_distributions(location=defaults.settings.location,
+                                            state_location=defaults.settings.state_location,
+                                            country_location=defaults.settings.country_location,
+                                            use_default=False)
+    #percent = [age_bracket[2:] for age_bracket in age_brackets]
+    #r = dict(zip(np.arange(len(age_brackets)), age_brackets))
+    
+    male_age_groups = [(age_range[0], age_range[1], age_range[2], age_range[3], age_range[4], age_range[5], age_range[6], age_range[7]) for age_range in male_age_brackets]
+    female_age_groups = [(age_range[0], age_range[1], age_range[2], age_range[3], age_range[4], age_range[5], age_range[6], age_range[7]) for age_range in female_age_brackets]
+    return male_age_groups, female_age_groups
+
+def read_occupation_distributions(datadir=None, location=None, state_location=None, country_location=None, nbrackets=None, file_path=None, use_default=False):
+    """
+    A dict of the occupation distribution by sex & age brackets. If use_default, then we'll
+    first try to look for location specific data and if that's not available
+    we'll use default data from settings.location,
+    settings.state_location, settings.country_location. This may not
+    be appropriate for the population under study so it's best to provide as
+    much data as you can for the specific population.
+
+    Args:
+        datadir (string)          : file path to the data directory
+        location (string)         : name of the location
+        state_location (string)   : name of the state the location is in
+        country_location (string) : name of the country the location is in
+        file_path (string)        : file path to user specified age bracket distribution data
+        use_default (bool)        : if True, try to first use the other parameters to find data specific to the location under study, otherwise returns default data drawing from the settings.location, settings.state_location, settings.country_location.
+
+    Returns:
+        dict: A dictionary of the age distribution by sex/ age bracket. Keys map to a
+        range of ages in that sex/ age bracket.
+
+    """
+    # Use default if no file for this location.
+    location_data = load_location(location, state_location, country_location, revert_to_default=use_default)
+    sex_nbrackets, age_nbrackets = calculate_which_occupation_nbrackets_to_use(location_data, nbrackets)
+    sex_brackets, age_brackets = location_data.get_occupations_distributions(sex_nbrackets, age_nbrackets)
+    # Use default if no data for this parameter.
+    if use_default and (sex_brackets is None or len(sex_brackets) == 0) and (age_brackets is None or len(age_brackets) == 0):
+        return read_occupation_distributions(location=defaults.settings.location,
+                                            state_location=defaults.settings.state_location,
+                                            country_location=defaults.settings.country_location,
+                                            use_default=False)
+    #percent = [age_bracket[2:] for age_bracket in age_brackets]
+    #r = dict(zip(np.arange(len(age_brackets)), age_brackets))
+    
+    occupation_gender_groups = [(age_range[0], age_range[1], age_range[2]) for age_range in sex_brackets] #occupation, male%, female%
+    occupation_age_groups = [(age_range[0], age_range[1], age_range[2], age_range[3], age_range[4], age_range[5], age_range[6], age_range[7], age_range[8], age_range[9], age_range[10], age_range[11]) for age_range in age_brackets] 
+    #minage, maxage, armedforces, managers, professionals, techniciansassociateprofessionals, clericalsupportworkers, servicesalesworkers, skilledagriculturalforestryfishery, crafttradesworkers, plantmachineoperators, elementaryoccupations
+    return occupation_gender_groups, occupation_age_groups
+
+def read_longtermillness_byage_distributions(datadir=None, location=None, state_location=None, country_location=None, nbrackets=None, file_path=None, use_default=False):
+    """
+    A dict of the long term illness distribution by age brackets. If use_default, then we'll
+    first try to look for location specific data and if that's not available
+    we'll use default data from settings.location,
+    settings.state_location, settings.country_location. This may not
+    be appropriate for the population under study so it's best to provide as
+    much data as you can for the specific population.
+
+    Args:
+        datadir (string)          : file path to the data directory
+        location (string)         : name of the location
+        state_location (string)   : name of the state the location is in
+        country_location (string) : name of the country the location is in
+        file_path (string)        : file path to user specified age bracket distribution data
+        use_default (bool)        : if True, try to first use the other parameters to find data specific to the location under study, otherwise returns default data drawing from the settings.location, settings.state_location, settings.country_location.
+
+    Returns:
+        dict: A dictionary of the age distribution by age bracket. Keys map to a
+        range of ages in that age bracket.
+
+    """
+    # Use default if no file for this location.
+    location_data = load_location(location, state_location, country_location, revert_to_default=use_default)
+    nbrackets = calculate_which_longtermillness_nbrackets_to_use(location_data, nbrackets)
+    male_age_brackets, female_age_brackets = location_data.get_longtermillness_byage_distribution(nbrackets)
+    # Use default if no data for this parameter.
+    if use_default and (male_age_brackets is None or len(male_age_brackets) == 0) and (female_age_brackets is None or len(female_age_brackets) == 0):
+        return read_longtermillness_byage_distributions(location=defaults.settings.location,
+                                            state_location=defaults.settings.state_location,
+                                            country_location=defaults.settings.country_location,
+                                            use_default=False)
+    #percent = [age_bracket[2:] for age_bracket in age_brackets]
+    #r = dict(zip(np.arange(len(age_brackets)), age_brackets))
+    
+    male_age_groups = [(age_range[0], age_range[1], age_range[2], age_range[3]) for age_range in male_age_brackets]
+    female_age_groups = [(age_range[0], age_range[1], age_range[2], age_range[3]) for age_range in female_age_brackets]
+    return male_age_groups, female_age_groups
+
+def read_numofcomorbidities_byage_distributions(datadir=None, location=None, state_location=None, country_location=None, nbrackets=None, file_path=None, use_default=False):
+    """
+    A dict of the num of comorbidities distribution by age brackets. If use_default, then we'll
+    first try to look for location specific data and if that's not available
+    we'll use default data from settings.location,
+    settings.state_location, settings.country_location. This may not
+    be appropriate for the population under study so it's best to provide as
+    much data as you can for the specific population.
+
+    Args:
+        datadir (string)          : file path to the data directory
+        location (string)         : name of the location
+        state_location (string)   : name of the state the location is in
+        country_location (string) : name of the country the location is in
+        file_path (string)        : file path to user specified age bracket distribution data
+        use_default (bool)        : if True, try to first use the other parameters to find data specific to the location under study, otherwise returns default data drawing from the settings.location, settings.state_location, settings.country_location.
+
+    Returns:
+        dict: A dictionary of the age distribution by age bracket. Keys map to a
+        range of ages in that age bracket.
+
+    """
+    location_data = load_location(location, state_location, country_location, revert_to_default=use_default)
+    age_brackets = location_data.get_numofcomorbidities_byage_distribution()
+
+    age_groups = [(age_range[0], age_range[1], age_range[2], age_range[3], age_range[4], age_range[5], age_range[6]) for age_range in age_brackets]
+    return age_groups
+
+def read_comorbiditytypes_byage_distributions(datadir=None, location=None, state_location=None, country_location=None, nbrackets=None, file_path=None, use_default=False):
+    """
+    A dict of the comorbidity types distribution. If use_default, then we'll
+    first try to look for location specific data and if that's not available
+    we'll use default data from settings.location,
+    settings.state_location, settings.country_location. This may not
+    be appropriate for the population under study so it's best to provide as
+    much data as you can for the specific population.
+
+    Args:
+        datadir (string)          : file path to the data directory
+        location (string)         : name of the location
+        state_location (string)   : name of the state the location is in
+        country_location (string) : name of the country the location is in
+        file_path (string)        : file path to user specified age bracket distribution data
+        use_default (bool)        : if True, try to first use the other parameters to find data specific to the location under study, otherwise returns default data drawing from the settings.location, settings.state_location, settings.country_location.
+
+    Returns:
+        dict: A dictionary of the age distribution by age bracket. Keys map to a
+        range of ages in that age bracket.
+
+    """
+    location_data = load_location(location, state_location, country_location, revert_to_default=use_default)
+    age_brackets = location_data.get_comorbiditytypes_byage_distribution()
+
+    age_groups = [(age_range[0], age_range[1], age_range[2], age_range[3], age_range[4], age_range[5], age_range[6], age_range[7], age_range[8], age_range[9], age_range[10], age_range[11]) for age_range in age_brackets]
+    return age_groups
+
+def read_bmibyage_distributions(datadir=None, location=None, state_location=None, country_location=None, nbrackets=None, file_path=None, use_default=False):
+    """
+    A dict of the bmi categories distribution by age brackets. If use_default, then we'll
+    first try to look for location specific data and if that's not available
+    we'll use default data from settings.location,
+    settings.state_location, settings.country_location. This may not
+    be appropriate for the population under study so it's best to provide as
+    much data as you can for the specific population.
+
+    Args:
+        datadir (string)          : file path to the data directory
+        location (string)         : name of the location
+        state_location (string)   : name of the state the location is in
+        country_location (string) : name of the country the location is in
+        file_path (string)        : file path to user specified age bracket distribution data
+        use_default (bool)        : if True, try to first use the other parameters to find data specific to the location under study, otherwise returns default data drawing from the settings.location, settings.state_location, settings.country_location.
+
+    Returns:
+        dict: A dictionary of the age distribution by age bracket. Keys map to a
+        range of ages in that age bracket.
+
+    """
+    # Use default if no file for this location.
+    location_data = load_location(location, state_location, country_location, revert_to_default=use_default)
+    nbrackets = calculate_which_bmi_nbrackets_to_use(location_data, nbrackets)
+    male_age_brackets, female_age_brackets = location_data.get_bmi_byage_distribution(nbrackets)
+    # Use default if no data for this parameter.
+    if use_default and (male_age_brackets is None or len(male_age_brackets) == 0) and (female_age_brackets is None or len(female_age_brackets) == 0):
+        return read_bmibyage_distributions(location=defaults.settings.location,
+                                            state_location=defaults.settings.state_location,
+                                            country_location=defaults.settings.country_location,
+                                            use_default=False)
+    #percent = [age_bracket[2:] for age_bracket in age_brackets]
+    #r = dict(zip(np.arange(len(age_brackets)), age_brackets))
+    
+    male_age_groups = [(age_range[0], age_range[1], age_range[2], age_range[3], age_range[4]) for age_range in male_age_brackets]
+    female_age_groups = [(age_range[0], age_range[1], age_range[2], age_range[3], age_range[4]) for age_range in female_age_brackets]
+    return male_age_groups, female_age_groups
+
+def read_employmentstatusbyage_distributions(datadir=None, location=None, state_location=None, country_location=None, nbrackets=None, file_path=None, use_default=False):
+    """
+    A dict of the employment status distribution by age brackets. If use_default, then we'll
+    first try to look for location specific data and if that's not available
+    we'll use default data from settings.location,
+    settings.state_location, settings.country_location. This may not
+    be appropriate for the population under study so it's best to provide as
+    much data as you can for the specific population.
+
+    Args:
+        datadir (string)          : file path to the data directory
+        location (string)         : name of the location
+        state_location (string)   : name of the state the location is in
+        country_location (string) : name of the country the location is in
+        file_path (string)        : file path to user specified age bracket distribution data
+        use_default (bool)        : if True, try to first use the other parameters to find data specific to the location under study, otherwise returns default data drawing from the settings.location, settings.state_location, settings.country_location.
+
+    Returns:
+        dict: A dictionary of the age distribution by age bracket. Keys map to a
+        range of ages in that age bracket.
+
+    """
+    # Use default if no file for this location.
+    location_data = load_location(location, state_location, country_location, revert_to_default=use_default)
+    nbrackets = calculate_which_employment_status_nbrackets_to_use(location_data, nbrackets)
+    male_age_brackets, female_age_brackets = location_data.get_employmentstatus_byage_distribution(nbrackets)
+    # Use default if no data for this parameter.
+    if use_default and (male_age_brackets is None or len(male_age_brackets) == 0) and (female_age_brackets is None or len(female_age_brackets) == 0):
+        return read_employmentstatusbyage_distributions(location=defaults.settings.location,
+                                            state_location=defaults.settings.state_location,
+                                            country_location=defaults.settings.country_location,
+                                            use_default=False)
+    #percent = [age_bracket[2:] for age_bracket in age_brackets]
+    #r = dict(zip(np.arange(len(age_brackets)), age_brackets))
+    
+    male_age_groups = [(age_range[0], age_range[1], age_range[2], age_range[3], age_range[4]) for age_range in male_age_brackets]
+    female_age_groups = [(age_range[0], age_range[1], age_range[2], age_range[3], age_range[4]) for age_range in female_age_brackets]
+    return male_age_groups, female_age_groups
+
+def read_employment_distributions(datadir=None, location=None, state_location=None, country_location=None, nbrackets=None, file_path=None, use_default=False):
+    """
+    A dict of the employment full time distribution by industries. If use_default, then we'll
+    first try to look for location specific data and if that's not available
+    we'll use default data from settings.location,
+    settings.state_location, settings.country_location. This may not
+    be appropriate for the population under study so it's best to provide as
+    much data as you can for the specific population.
+
+    Args:
+        datadir (string)          : file path to the data directory
+        location (string)         : name of the location
+        state_location (string)   : name of the state the location is in
+        country_location (string) : name of the country the location is in
+        file_path (string)        : file path to user specified age bracket distribution data
+        use_default (bool)        : if True, try to first use the other parameters to find data specific to the location under study, otherwise returns default data drawing from the settings.location, settings.state_location, settings.country_location.
+
+    Returns:
+        dict: A dictionary of the employment (full time) distribution by industries.
+
+    """
+    # Use default if no file for this location.
+    location_data = load_location(location, state_location, country_location, revert_to_default=use_default)
+    nbrackets = calculate_which_employment_fulltime_nbrackets_to_use(location_data, nbrackets)
+    male_industry_brackets, female_industry_brackets, male_industry_ftpt_brackets, female_industry_ftpt_brackets = location_data.get_employment_byindustry_distribution(nbrackets)
+    # Use default if no data for this parameter.
+    if use_default and (male_industry_brackets is None or len(male_industry_brackets) == 0) and (female_industry_brackets is None or len(female_industry_brackets) == 0) and (male_industry_ftpt_brackets is None or len(male_industry_ftpt_brackets) == 0) and (female_industry_ftpt_brackets is None or len(female_industry_ftpt_brackets) == 0):
+        return read_employment_distributions(location=defaults.settings.location,
+                                            state_location=defaults.settings.state_location,
+                                            country_location=defaults.settings.country_location,
+                                            use_default=False)
+    #percent = [age_bracket[2:] for age_bracket in age_brackets]
+    #r = dict(zip(np.arange(len(age_brackets)), age_brackets))
+    
+    male_industry_groups = [(industry_range[0], industry_range[1]) for industry_range in male_industry_brackets]
+    female_industry_groups = [(industry_range[0], industry_range[1]) for industry_range in female_industry_brackets]
+    male_industry_ftpt_groups = [(industry_range[0], industry_range[1], industry_range[2], industry_range[3]) for industry_range in male_industry_ftpt_brackets]
+    female_industry_ftpt_groups = [(industry_range[0], industry_range[1], industry_range[2], industry_range[3]) for industry_range in female_industry_ftpt_brackets]
+    return male_industry_groups, female_industry_groups, male_industry_ftpt_brackets, female_industry_ftpt_brackets
 
 # TODO: need to adapt this to new data.py
 def get_smoothed_single_year_age_distr(datadir=None, location=None, state_location=None, country_location=None, nbrackets=None, file_path=None, use_default=False, window_length=7):

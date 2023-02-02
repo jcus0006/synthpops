@@ -18,6 +18,65 @@ class PopulationAgeDistribution(JsonObject):
     # [min_age, max_age, percentage]
     distribution = ListProperty(DefaultProperty)
 
+class SexByAgeDistribution(JsonObject):
+    """Class for sex by age distribution with a specified number of bins."""
+    num_bins = IntegerProperty()
+    # [min_age, max_age, percentagemale, percentagefemale]
+    distribution = ListProperty(DefaultProperty)
+
+class EducationByAgeDistribution(JsonObject):
+    """Class for education by age distribution with a specified number of bins."""
+    num_bins = IntegerProperty()
+    # [min_age, max_age, percentageacrossgroups, noschooling, primary, lowersecondary, uppersecondary, postsecondarynontertiary, tertiary]
+    maledistribution = ListProperty(DefaultProperty)
+    femaledistribution = ListProperty(DefaultProperty)
+
+class OccupationBySexDistribution(JsonObject):
+    """Class for occupation by sex distribution with a specified number of bins."""
+    num_bins = IntegerProperty()
+    # [min_age, max_age, percentagemale, percentagefemale]
+    distribution = ListProperty(DefaultProperty)
+
+class OccupationByAgeDistribution(JsonObject):
+    """Class for occupation by age distribution with a specified number of bins."""
+    num_bins = IntegerProperty()
+    # [min_age, max_age, percentagemale, percentagefemale]
+    distribution = ListProperty(DefaultProperty)
+
+class LongTermIllnessByAgeDistribution(JsonObject):
+    """Class for long term illness by age distribution with a specified number of bins."""
+    num_bins = IntegerProperty()
+    # [min_age, max_age, percentagemale, percentagefemale]
+    maledistribution = ListProperty(DefaultProperty)
+    femaledistribution = ListProperty(DefaultProperty)
+
+class BMIByAgeDistribution(JsonObject):
+    """Class for BMI by age distribution with a specified number of bins."""
+    num_bins = IntegerProperty()
+    # [min_age, max_age, percentagemale, percentagefemale]
+    maledistribution = ListProperty(DefaultProperty)
+    femaledistribution = ListProperty(DefaultProperty)
+
+class EmploymentStatusByAgeDistribution(JsonObject):
+    """Class for Employment status by age distribution with a specified number of bins."""
+    num_bins = IntegerProperty()
+    # [min_age, max_age, percentageemployed, percentageunemployed, percentageinactive]
+    maledistribution = ListProperty(DefaultProperty)
+    femaledistribution = ListProperty(DefaultProperty)
+
+class EmploymentByIndustryDistribution(JsonObject):
+    """Class for Employment by Industry distribution with a specified number of bins."""
+    num_bins = IntegerProperty()
+    # [industry, male, female]
+    maledistribution = ListProperty(DefaultProperty)
+    femaledistribution = ListProperty(DefaultProperty)
+
+class EmploymentByIndustryFtPtDistribution(JsonObject):
+    """Class for Employment by Industry distribution with a specified number of bins."""
+    num_bins = IntegerProperty()
+    # [industry, male, female]
+    maledistribution = ListProperty(DefaultProperty)
+    femaledistribution = ListProperty(DefaultProperty)
 
 class SchoolSizeDistributionByType(JsonObject):
     """Class for the school size distribution by school type."""
@@ -59,6 +118,34 @@ class Location(JsonObject):
     parent = DefaultProperty()
 
     population_age_distributions = ListProperty(PopulationAgeDistribution)
+
+    sex_byage_distributions = ListProperty(SexByAgeDistribution)
+
+    education_byage_distributions = ListProperty(EducationByAgeDistribution)
+
+    occupation_bysex_distributions = ListProperty(OccupationBySexDistribution)
+
+    occupation_byage_distributions = ListProperty(OccupationByAgeDistribution)
+
+    longtermillness_byage_distributions = ListProperty(LongTermIllnessByAgeDistribution)
+
+    bmi_byage_distributions = ListProperty(BMIByAgeDistribution)
+
+    employment_status_byage_distributions = ListProperty(EmploymentStatusByAgeDistribution)
+
+    employment_byindustry_distributions = ListProperty(EmploymentByIndustryDistribution)
+
+    employment_byindustry_ftpt_distributions = ListProperty(EmploymentByIndustryFtPtDistribution)
+
+    numofcomorbidities_byage = ListProperty(
+        # [minage, maxage, 1, 2, 3, 4, 5]
+        ListProperty(DefaultProperty)
+    )
+
+    comorbiditytypes_byage = ListProperty(
+        # [minage, maxage, 1, 2, 3, 4, 5]
+        ListProperty(DefaultProperty)
+    )
 
     employment_rates_by_age = ListProperty(
         # [age, percentage]
@@ -157,6 +244,224 @@ class Location(JsonObject):
         dist = matching_distributions[0].distribution
         return dist
 
+    def get_sex_byage_distribution(self, nbrackets):
+        """
+        Get the sex by age group distribution of the population aggregated to nbrackets age
+        brackets. If the data doesn't contain a distribution with the requested number
+        of brackets, an exception is raised.
+
+        Args:
+            nbrackets (int): the number of age brackets the age distribution is aggregated to
+
+        Returns:
+            list: A list of the probability sex by age distribution values indexed by
+            the bracket number.
+        """
+
+        matching_distributions = [d for d in self.sex_byage_distributions if d.num_bins==nbrackets]
+        if len(matching_distributions) == 0:
+            raise RuntimeError(f"The configured location data doesn't have a sex by age "
+                               f"distribution with [{nbrackets}] brackets.")
+
+        dist = matching_distributions[0].distribution
+        return dist
+
+    def get_education_byage_distribution(self, nbrackets):
+        """
+        Get the education by age group distribution of the population aggregated to nbrackets age
+        brackets. If the data doesn't contain a distribution with the requested number
+        of brackets, an exception is raised.
+
+        Args:
+            nbrackets (int): the number of age brackets the distribution is aggregated to
+
+        Returns:
+            list: A list of the probability education by age distribution values indexed by
+            the bracket number.
+        """
+
+        matching_distributions = [d for d in self.education_byage_distributions if d.num_bins==nbrackets]
+        if len(matching_distributions) == 0:
+            raise RuntimeError(f"The configured location data doesn't have an education by age "
+                               f"distribution with [{nbrackets}] brackets.")
+
+        maledist = matching_distributions[0].maledistribution
+        femaledist = matching_distributions[0].femaledistribution
+        return maledist, femaledist
+
+    def get_occupations_distributions(self, sex_nbrackets, age_nbrackets):
+        """
+        Get the occupation by sex/age group distribution of the population aggregated to nbrackets age
+        brackets. If the data doesn't contain a distribution with the requested number
+        of brackets, an exception is raised.
+
+        Args:
+            nbrackets (int): the number of brackets the distribution is aggregated to
+
+        Returns:
+            list: A list of the probability occupations by sex/ age distribution values indexed by
+            the bracket number.
+        """
+
+        sex_matching_distributions = [d for d in self.occupation_bysex_distributions if d.num_bins==sex_nbrackets]
+        if len(sex_matching_distributions) == 0:
+            raise RuntimeError(f"The configured location data doesn't have an occupations by sex/age (male) "
+                               f"distribution with [{sex_nbrackets}] brackets.")
+
+        age_matching_distributions = [d for d in self.occupation_byage_distributions if d.num_bins==age_nbrackets]
+        if len(age_matching_distributions) == 0:
+            raise RuntimeError(f"The configured location data doesn't have an occupations by sex/age (female) "
+                               f"distribution with [{age_nbrackets}] brackets.")
+
+        return sex_matching_distributions[0].distribution, age_matching_distributions[0].distribution
+
+    def get_longtermillness_byage_distribution(self, nbrackets):
+        """
+        Get the long term illness by age group distribution of the population aggregated to nbrackets age
+        brackets. If the data doesn't contain a distribution with the requested number
+        of brackets, an exception is raised.
+
+        Args:
+            nbrackets (int): the number of age brackets the distribution is aggregated to
+
+        Returns:
+            list: A list of the probability long term illness by age distribution values indexed by
+            the bracket number.
+        """
+
+        matching_distributions = [d for d in self.longtermillness_byage_distributions if d.num_bins==nbrackets]
+        if len(matching_distributions) == 0:
+            raise RuntimeError(f"The configured location data doesn't have a long term illness by age "
+                               f"distribution with [{nbrackets}] brackets.")
+
+        maledist = matching_distributions[0].maledistribution
+        femaledist = matching_distributions[0].femaledistribution
+        return maledist, femaledist
+
+    def get_numofcomorbidities_byage_distribution(self):
+        """
+        Get the num of comorbidities by age group distribution of the population
+        brackets.
+
+        Returns:
+            list: A list of the probability num of comorbidities by age distribution values indexed by
+            the bracket number.
+        """
+
+        matching_distributions = [d for d in self.numofcomorbidities_byage_distribution]
+        if len(matching_distributions) == 0:
+            raise RuntimeError(f"The configured location data doesn't have a num of comoridities by age "
+                               f"distribution.")
+
+        return matching_distributions
+
+    def get_comorbiditytypes_byage_distribution(self):
+        """
+        Get the comorbidity types by age group distribution of the population
+        brackets.
+
+        Returns:
+            list: A list of the probability cororbidity type by age distribution values indexed by
+            the bracket number.
+        """
+
+        matching_distributions = [d for d in self.comorbiditytypes_byage_distribution]
+        if len(matching_distributions) == 0:
+            raise RuntimeError(f"The configured location data doesn't have a comorbidity types by age "
+                               f"distribution.")
+
+        return matching_distributions
+
+    def get_bmi_byage_distribution(self, nbrackets):
+        """
+        Get the bmi by age group distribution of the population aggregated to nbrackets age
+        brackets. If the data doesn't contain a distribution with the requested number
+        of brackets, an exception is raised.
+
+        Args:
+            nbrackets (int): the number of age brackets the distribution is aggregated to
+
+        Returns:
+            list: A list of the probability bmi by age distribution values indexed by
+            the bracket number.
+        """
+
+        matching_distributions = [d for d in self.bmi_byage_distributions if d.num_bins==nbrackets]
+        if len(matching_distributions) == 0:
+            raise RuntimeError(f"The configured location data doesn't have a BMI "
+                               f"distribution with [{nbrackets}] brackets.")
+
+        maledist = matching_distributions[0].maledistribution
+        femaledist = matching_distributions[0].femaledistribution
+        return maledist, femaledist
+
+    def get_employmentstatus_byage_distribution(self, nbrackets):
+        """
+        Get the employment status by age group distribution of the population aggregated to nbrackets age
+        brackets. If the data doesn't contain a distribution with the requested number
+        of brackets, an exception is raised.
+
+        Args:
+            nbrackets (int): the number of age brackets the distribution is aggregated to
+
+        Returns:
+            list: A list of the probability employment status by age distribution values indexed by
+            the bracket number.
+        """
+
+        matching_distributions = [d for d in self.employment_status_byage_distributions if d.num_bins==nbrackets]
+        if len(matching_distributions) == 0:
+            raise RuntimeError(f"The configured location data doesn't have a BMI "
+                               f"distribution with [{nbrackets}] brackets.")
+
+        maledist = matching_distributions[0].maledistribution
+        femaledist = matching_distributions[0].femaledistribution
+        return maledist, femaledist
+
+    def get_employment_fulltime_parttime_distribution(self):
+        """
+        Get the employment fulltime vs parttime distribution.
+
+        Returns:
+            list: A list of the probability employment fulltime vs parttime
+        """
+
+        matching_distributions = [d for d in self.employment_fulltime_parttime_distributions]
+        if len(matching_distributions) == 0:
+            raise RuntimeError(f"The configured location data doesn't have an employment fulltime vs parttime "
+                               f"distribution.")
+
+        return matching_distributions
+
+    def get_employment_byindustry_distribution(self, nbrackets):
+        """
+        Get the employment distribution of the population aggregated to nbrackets industry
+        brackets. If the data doesn't contain a distribution with the requested number
+        of brackets, an exception is raised.
+
+        Args:
+            nbrackets (int): the number of brackets the distribution is aggregated to
+
+        Returns:
+            list: A list of the probability employment by industry distribution values indexed by
+            the bracket number.
+        """
+
+        matching_distributions = [d for d in self.employment_byindustry_distributions if d.num_bins==nbrackets]
+        if len(matching_distributions) == 0:
+            raise RuntimeError(f"The configured location data doesn't have an employment by industry "
+                               f"distribution with [{nbrackets}] brackets.")
+
+        matching_distributions_ftpt = [d for d in self.employment_byindustry_ftpt_distributions if d.num_bins==nbrackets]
+        if len(matching_distributions) == 0:
+            raise RuntimeError(f"The configured location data doesn't have an employment by industry (ftpt) "
+                               f"distribution with [{nbrackets}] brackets.")
+
+        maledist = matching_distributions[0].maledistribution
+        femaledist = matching_distributions[0].femaledistribution
+        maledistftpt = matching_distributions_ftpt[0].maledistribution
+        femaledistftpt = matching_distributions_ftpt[0].femaledistribution
+        return maledist, femaledist, maledistftpt, femaledistftpt
 
 def populate_parent_data_from_file_path(location, parent_file_path):
     """
@@ -465,6 +770,135 @@ def check_valid_probability_distributions(property_name, valid_properties=None):
     if property_name not in valid_properties: # pragma: no cover
         raise NotImplementedError(f"{property_name} is not one of the expected probability distributions. The list of expected probability distributions is {valid_properties}. If you wish to use this method on the attribute {property_name}, you can supply it as the parameter valid_properties={property_name}.")
 
+def check_probability_distribution_sum_age_distributions(location, arr, tolerance=1e-2, **kwargs):
+    """
+    Check that each population age distribution has a sum equal to 1 within some
+    tolerance.
+
+    Args:
+        location (json)   : the json object with location data
+        arr (list)        : the list of population age distributions
+        tolerance (float) : difference from the sum of 1 tolerated
+        kwargs (dict)     : dictionary of values passed to np.isclose()
+
+    Returns:
+        [True, None] if the sum of the probability distribution is equal to 1 within the tolerance level.
+        [False, str] else. The returned str is the error message with some information about the check.
+    """
+    if tolerance is not None: # pragma: no cover
+        kwargs['atol'] = tolerance
+
+    checks, msgs = [], []
+    for i in arr: # pragma: no cover
+        if 'num_bins' in i:
+            arr_i = np.array(i.distribution)
+            arr_sum = np.sum(arr_i[:, -1])
+
+            check = np.isclose(a=1, b=arr_sum, **kwargs)
+            checks.append(check)
+
+            if check:
+                msg = ''
+            else:
+                msg = f"The sum of the probability distribution for the population age distribution for {location.location_name} with num_bins = {i.num_bins} is {arr_sum:.4f}.\n"
+            msgs.append(msg)
+
+        else:
+            checks.append(False)
+            msgs.append(f"The probability distribution for the population age distribution for {location.location_name} does not have num_bins.")
+    msg = "".join(msgs)
+    if msg == "": # pragma: no cover
+        msg = None
+    return [sum(checks) > 0, msg]
+
+def check_probability_distribution_generic(location, arr, startfromindex, propertyname, tolerance=1e-2, **kwargs):
+    """
+    Check that each row has a sum equal to 1 within some tolerance. 
+    Works with the typical distribution field and assumes the presence of 'num_bins'
+    It also assumes zero or more precending fields (and no trailing fields)
+
+    Args:
+        location (json)   : the json object with location data
+        arr (list)        : the list of distributions
+        start from index  : if 2, ignore the first 2 elements in the row for e.g. could be minage, maxage
+        propertyname      : property name (for logging purposes only)
+        tolerance (float) : difference from the sum of 1 tolerated
+        kwargs (dict)     : dictionary of values passed to np.isclose()
+
+    Returns:
+        [True, None] if the sum of the probability distribution is equal to 1 within the tolerance level.
+        [False, str] else. The returned str is the error message with some information about the check.
+    """
+    if tolerance is not None: # pragma: no cover
+        kwargs['atol'] = tolerance
+
+    checks, msgs = [], []
+    for i in arr: # pragma: no cover
+        if 'num_bins' in i:
+            arr_i = np.array(i.distribution)
+
+            for x in arr_i:
+                arr_i_x = np.array(x)
+
+                arr_sum = np.sum(arr_i_x[startfromindex:])
+
+                check = np.isclose(a=1, b=arr_sum, **kwargs)
+                checks.append(check)
+
+                if check:
+                    msg = ''
+                else:
+                    msg = f"The sum of the probability distribution for the " + propertyname + " distribution for {location.location_name} with num_bins = {i.num_bins} is {arr_sum:.4f}.\n"
+                msgs.append(msg)
+        else:
+            checks.append(False)
+            msgs.append(f"The probability distribution for the " + propertyname + " distribution for {location.location_name} does not have num_bins.")
+    msg = "".join(msgs)
+    if msg == "": # pragma: no cover
+        msg = None
+    return [sum(checks) > 0, msg]
+
+
+def check_probability_distribution_generic_nonumbins(location, arr, startfromindex, propertyname, tolerance=1e-2, **kwargs):
+    """
+    Check that each row has a sum equal to 1 within some tolerance. 
+    Works without the typical distribution field (simple arrays)
+    It also assumes zero or more precending fields (and no trailing fields)
+
+    Args:
+        location (json)   : the json object with location data
+        arr (list)        : the list of distributions
+        start from index  : if 2, ignore the first 2 elements in the row for e.g. could be minage, maxage
+        propertyname      : property name (for logging purposes only)
+        tolerance (float) : difference from the sum of 1 tolerated
+        kwargs (dict)     : dictionary of values passed to np.isclose()
+
+    Returns:
+        [True, None] if the sum of the probability distribution is equal to 1 within the tolerance level.
+        [False, str] else. The returned str is the error message with some information about the check.
+    """
+    if tolerance is not None: # pragma: no cover
+        kwargs['atol'] = tolerance
+
+    checks, msgs = [], []
+    for x in arr: # pragma: no cover
+        arr_i_x = np.array(x)
+
+        arr_sum = np.sum(arr_i_x[startfromindex:])
+
+        check = np.isclose(a=1, b=arr_sum, **kwargs)
+        checks.append(check)
+
+        if check:
+            msg = ''
+        else:
+            msg = f"The sum of the probability distribution for the " + propertyname + " distribution for {location.location_name} with num_bins = {i.num_bins} is {arr_sum:.4f}.\n"
+        msgs.append(msg)
+        
+    msg = "".join(msgs)
+    if msg == "": # pragma: no cover
+        msg = None
+    return [sum(checks) > 0, msg]
 
 def check_probability_distribution_sum_age_distributions(location, arr, tolerance=1e-2, **kwargs):
     """
@@ -507,6 +941,286 @@ def check_probability_distribution_sum_age_distributions(location, arr, toleranc
         msg = None
     return [sum(checks) > 0, msg]
 
+def check_probability_distribution_sum_sex_byage_distributions(location, arr, tolerance=1e-2, **kwargs):
+    """
+    Check that each population age distribution has a sum equal to 1 within some
+    tolerance.
+
+    Args:
+        location (json)   : the json object with location data
+        arr (list)        : the list of population age distributions
+        tolerance (float) : difference from the sum of 1 tolerated
+        kwargs (dict)     : dictionary of values passed to np.isclose()
+
+    Returns:
+        [True, None] if the sum of the probability distribution is equal to 1 within the tolerance level.
+        [False, str] else. The returned str is the error message with some information about the check.
+    """
+    if tolerance is not None: # pragma: no cover
+        kwargs['atol'] = tolerance
+
+    checks, msgs = [], []
+    for i in arr: # pragma: no cover
+        if 'num_bins' in i:
+            arr_i = np.array(i.distribution)
+
+            for x in arr_i:
+                arr_i_x = np.array(x)
+
+                arr_sum = np.sum(arr_i_x[2:])
+
+                check = np.isclose(a=1, b=arr_sum, **kwargs)
+                checks.append(check)
+
+                if check:
+                    msg = ''
+                else:
+                    msg = f"The sum of the probability distribution for the sex by age distribution for {location.location_name} with num_bins = {i.num_bins} is {arr_sum:.4f}.\n"
+                msgs.append(msg)
+        else:
+            checks.append(False)
+            msgs.append(f"The probability distribution for the sex by age distribution for {location.location_name} does not have num_bins.")
+    msg = "".join(msgs)
+    if msg == "": # pragma: no cover
+        msg = None
+    return [sum(checks) > 0, msg]
+
+# def check_probability_distribution_sum_education_byage_distributions(location, arr, tolerance=1e-2, **kwargs):
+#     """
+#     Check that each education age distribution has a sum equal to 1 within some
+#     tolerance.
+
+#     Args:
+#         location (json)   : the json object with location data
+#         arr (list)        : the list of population age distributions
+#         tolerance (float) : difference from the sum of 1 tolerated
+#         kwargs (dict)     : dictionary of values passed to np.isclose()
+
+#     Returns:
+#         [True, None] if the sum of the probability distribution is equal to 1 within the tolerance level.
+#         [False, str] else. The returned str is the error message with some information about the check.
+#     """
+#     if tolerance is not None: # pragma: no cover
+#         kwargs['atol'] = tolerance
+
+#     checks, msgs = [], []
+#     for i in arr: # pragma: no cover
+#         if 'num_bins' in i:
+#             arr_i = np.array(i.maledistribution)
+
+#             for x in arr_i:
+#                 arr_i_x = np.array(x)
+
+#                 arr_sum = np.sum(arr_i_x[2:]) #first cell minage, second cell maxage, third cell percentage across age groups, hence start from 3 onwards
+
+#                 check = np.isclose(a=1, b=arr_sum, **kwargs)
+#                 checks.append(check)
+
+#                 if check:
+#                     msg = ''
+#                 else:
+#                     msg = f"The sum of the probability distribution for the education by age distribution (male case) for {location.location_name} with num_bins = {i.num_bins} is {arr_sum:.4f}.\n"
+#                 msgs.append(msg)
+
+#             arr_i = np.array(i.femaledistribution)
+
+#             for x in arr_i:
+#                 arr_i_x = np.array(x)
+
+#                 arr_sum = np.sum(arr_i_x[2:]) #first cell minage, second cell maxage, third cell percentage across age groups, hence start from 3 onwards
+
+#                 check = np.isclose(a=1, b=arr_sum, **kwargs)
+#                 checks.append(check)
+
+#                 if check:
+#                     msg = ''
+#                 else:
+#                     msg = f"The sum of the probability distribution for the education by age distribution (female case) for {location.location_name} with num_bins = {i.num_bins} is {arr_sum:.4f}.\n"
+#                 msgs.append(msg)
+
+#         else:
+#             checks.append(False)
+#             msgs.append(f"The probability distribution for the education by age distribution for {location.location_name} does not have num_bins.")
+
+#     msg = "".join(msgs)
+#     if msg == "": # pragma: no cover
+#         msg = None
+#     return [sum(checks) > 0, msg]
+
+def check_probability_distribution_sum_male_female_byage_distributions(location, arr, property_name, start_index, tolerance=1e-2, **kwargs):
+    """
+    Check that each age distribution for both male and female has a sum equal to 1 within some
+    tolerance.
+
+    Args:
+        location (json)   : the json object with location data
+        arr (list)        : the list of population age distributions
+        tolerance (float) : difference from the sum of 1 tolerated
+        kwargs (dict)     : dictionary of values passed to np.isclose()
+
+    Returns:
+        [True, None] if the sum of the probability distribution is equal to 1 within the tolerance level.
+        [False, str] else. The returned str is the error message with some information about the check.
+    """
+    if tolerance is not None: # pragma: no cover
+        kwargs['atol'] = tolerance
+
+    checks, msgs = [], []
+    for i in arr: # pragma: no cover
+        if 'num_bins' in i:
+            arr_i = np.array(i.maledistribution)
+
+            for x in arr_i:
+                arr_i_x = np.array(x)
+
+                arr_sum = np.sum(arr_i_x[start_index:]) #first cell minage, second cell maxage, third cell percentage across age groups, hence start from 3 onwards
+
+                check = np.isclose(a=1, b=arr_sum, **kwargs)
+                checks.append(check)
+
+                if check:
+                    msg = ''
+                else:
+                    msg = f"The sum of the probability distribution for the " + property_name + " distribution (male case) for {location.location_name} with num_bins = {i.num_bins} is {arr_sum:.4f}.\n"
+                msgs.append(msg)
+
+            arr_i = np.array(i.femaledistribution)
+
+            for x in arr_i:
+                arr_i_x = np.array(x)
+
+                arr_sum = np.sum(arr_i_x[start_index:]) #first cell minage, second cell maxage, third cell percentage across age groups, hence start from 3 onwards
+
+                check = np.isclose(a=1, b=arr_sum, **kwargs)
+                checks.append(check)
+
+                if check:
+                    msg = ''
+                else:
+                    msg = f"The sum of the probability distribution for the " + property_name + " distribution (female case) for {location.location_name} with num_bins = {i.num_bins} is {arr_sum:.4f}.\n"
+                msgs.append(msg)
+
+        else:
+            checks.append(False)
+            msgs.append(f"The probability distribution for the " + property_name + " distribution for {location.location_name} does not have num_bins.")
+
+    msg = "".join(msgs)
+    if msg == "": # pragma: no cover
+        msg = None
+    return [sum(checks) > 0, msg]
+
+def check_probability_distribution_sum_employment_distributions(location, arr, property_name, tolerance=1e-2, **kwargs):
+    """
+    Check that each distribution for employment distributions, have a sum equal to 1 within some
+    tolerance.
+
+    Args:
+        location (json)   : the json object with location data
+        arr (list)        : the list of population age distributions
+        tolerance (float) : difference from the sum of 1 tolerated
+        kwargs (dict)     : dictionary of values passed to np.isclose()
+
+    Returns:
+        [True, None] if the sum of the probability distribution is equal to 1 within the tolerance level.
+        [False, str] else. The returned str is the error message with some information about the check.
+    """
+    if tolerance is not None: # pragma: no cover
+        kwargs['atol'] = tolerance
+
+    checks, msgs = [], []
+    for i in arr: # pragma: no cover
+        if 'num_bins' in i:
+            arr_i = np.array(i.maledistribution)
+            arr_sum = np.sum([x[1] for x in arr_i])
+            check = np.isclose(a=1, b=arr_sum, **kwargs)
+            checks.append(check)
+
+            if check:
+                msg = ''
+            else:
+                msg = f"The sum of the probability distribution for the " + property_name + " distribution (male) for {location.location_name} with num_bins = {i.num_bins} is {arr_sum:.4f}.\n"
+            
+            msgs.append(msg)
+
+
+            arr_i = np.array(i.femaledistribution)
+            arr_sum = np.sum([x[1] for x in arr_i])
+            check = np.isclose(a=1, b=arr_sum, **kwargs)
+            checks.append(check)
+
+            if check:
+                msg = ''
+            else:
+                msg = f"The sum of the probability distribution for the " + property_name + " distribution (male) for {location.location_name} with num_bins = {i.num_bins} is {arr_sum:.4f}.\n"
+            
+            msgs.append(msg)
+        else:
+            checks.append(False)
+            msgs.append(f"The probability distribution for the " + property_name + " distribution for {location.location_name} does not have num_bins.")
+
+    msg = "".join(msgs)
+    if msg == "": # pragma: no cover
+        msg = None
+    return [sum(checks) > 0, msg]
+
+def check_probability_distribution_sum_employment_ftpt_distributions(location, arr, property_name, tolerance=1e-2, **kwargs):
+    """
+    Check that each distribution for employment distributions, have a sum equal to 1 within some
+    tolerance.
+
+    Args:
+        location (json)   : the json object with location data
+        arr (list)        : the list of population age distributions
+        tolerance (float) : difference from the sum of 1 tolerated
+        kwargs (dict)     : dictionary of values passed to np.isclose()
+
+    Returns:
+        [True, None] if the sum of the probability distribution is equal to 1 within the tolerance level.
+        [False, str] else. The returned str is the error message with some information about the check.
+    """
+    if tolerance is not None: # pragma: no cover
+        kwargs['atol'] = tolerance
+
+    checks, msgs = [], []
+    for i in arr: # pragma: no cover
+        if 'num_bins' in i:
+            arr_i = np.array(i.maledistribution)
+
+            for x in arr_i:
+                arr_i_x = np.array(x)
+                arr_sum = np.sum(arr_i_x[1:])
+                check = np.isclose(a=1, b=arr_sum, **kwargs)
+                checks.append(check)
+
+                if check:
+                    msg = ''
+                else:
+                    msg = f"The sum of the probability distribution for the " + property_name + " distribution (male) for {location.location_name} with num_bins = {i.num_bins} is {arr_sum:.4f}.\n"
+                
+                msgs.append(msg)
+
+            arr_i = np.array(i.femaledistribution)
+
+            for x in arr_i:
+                arr_i_x = np.array(x)
+                arr_sum = np.sum(arr_i_x[1:])
+                check = np.isclose(a=1, b=arr_sum, **kwargs)
+                checks.append(check)
+
+                if check:
+                    msg = ''
+                else:
+                    msg = f"The sum of the probability distribution for the " + property_name + " distribution (male) for {location.location_name} with num_bins = {i.num_bins} is {arr_sum:.4f}.\n"
+                
+                msgs.append(msg)
+        else:
+            checks.append(False)
+            msgs.append(f"The probability distribution for the " + property_name + " distribution for {location.location_name} does not have num_bins.")
+
+    msg = "".join(msgs)
+    if msg == "": # pragma: no cover
+        msg = None
+    return [sum(checks) > 0, msg]
 
 def check_probability_distribution_nonnegative_age_distributions(location, arr):
     """
@@ -546,6 +1260,146 @@ def check_probability_distribution_nonnegative_age_distributions(location, arr):
         msg = None
     return [sum(checks) > 0, msg]
 
+def check_probability_distribution_nonnegative_age_distributions_nonumbins(location, property_name, arr):
+    """
+    Check that each distribution has all non negative values.
+
+    Args:
+        location (json) : the json object with location data
+        arr (list) : the list of population age distributions
+
+    Returns:
+        [True, None] if the sum of the probability distribution is equal to 1 within the tolerance level.
+        [False, str] else. The returned str is the error message with some information about the check.
+    """
+    checks, msgs = [], []
+    for i in arr: # pragma: no cover
+        arr_i = np.array(i)
+
+        # find the indices where the distribution is negative
+        negative = np.argwhere(arr_i < 0)
+        # check is any are negative
+        any_negative = len(negative)
+        check = not any_negative
+        checks.append(check)
+
+        if check:
+            msg = ''
+        else:
+            msg = f"The probability distribution for the " + property_name + " distribution for {location.location_name} with num_bins = {i.num_bins} has some negative values, {arr_i[negative]}, at the indices {negative}.\n"
+        msgs.append(msg)
+
+    msg = "".join(msgs)
+    if msg == "": # pragma: no cover
+        msg = None
+    return [sum(checks) > 0, msg]
+
+def check_probability_distribution_nonnegative_malefemalesplit_distributions(location, arr):
+    """
+    Check that each population age distribution has all non negative values.
+
+    Args:
+        location (json) : the json object with location data
+        arr (list) : the list of population age distributions
+
+    Returns:
+        [True, None] if the sum of the probability distribution is equal to 1 within the tolerance level.
+        [False, str] else. The returned str is the error message with some information about the check.
+    """
+    checks, msgs = [], []
+    for i in arr: # pragma: no cover
+        if 'num_bins' in i:
+            arr_i = np.array(i.maledistribution)
+
+            # find the indices where the distribution is negative
+            negative = np.argwhere(arr_i < 0)
+            # check is any are negative
+            any_negative = len(negative)
+            check = not any_negative
+            checks.append(check)
+
+            if check:
+                msg = ''
+            else:
+                msg = f"The probability distribution for the education age male distribution for {location.location_name} with num_bins = {i.num_bins} has some negative values, {arr_i[negative]}, at the indices {negative}.\n"
+            msgs.append(msg)
+
+            arr_i = np.array(i.femaledistribution)
+
+            # find the indices where the distribution is negative
+            negative = np.argwhere(arr_i < 0)
+            # check is any are negative
+            any_negative = len(negative)
+            check = not any_negative
+            checks.append(check)
+
+            if check:
+                msg = ''
+            else:
+                msg = f"The probability distribution for the education age female distribution for {location.location_name} with num_bins = {i.num_bins} has some negative values, {arr_i[negative]}, at the indices {negative}.\n"
+            msgs.append(msg)
+
+        else:
+            checks.append(False)
+            msgs.append(f"The probability distribution for the education age distribution for {location.location_name} does not have num_bins.")
+    msg = "".join(msgs)
+    if msg == "": # pragma: no cover
+        msg = None
+    return [sum(checks) > 0, msg]
+
+def check_probability_distribution_nonnegative_employment_parttime_distributions(location, arr):
+    """
+    Check that each distribution has all non negative values.
+
+    Args:
+        location (json) : the json object with location data
+        arr (list) : the list of distributions
+
+    Returns:
+        [True, None] if the sum of the probability distribution is equal to 1 within the tolerance level.
+        [False, str] else. The returned str is the error message with some information about the check.
+    """
+    checks, msgs = [], []
+    for i in arr: # pragma: no cover
+        if 'num_bins' in i:
+            arr_i = np.array(i.ptwithftdistribution)
+
+            # find the indices where the distribution is negative
+            negative = np.argwhere(arr_i < 0)
+            # check is any are negative
+            any_negative = len(negative)
+            check = not any_negative
+            checks.append(check)
+
+            if check:
+                msg = ''
+            else:
+                msg = f"The probability distribution for the employment (part time with full time) distribution for {location.location_name} with num_bins = {i.num_bins} has some negative values, {arr_i[negative]}, at the indices {negative}.\n"
+            msgs.append(msg)
+
+            arr_i = np.array(i.ptwithoutftdistribution)
+
+            # find the indices where the distribution is negative
+            negative = np.argwhere(arr_i < 0)
+            # check is any are negative
+            any_negative = len(negative)
+            check = not any_negative
+            checks.append(check)
+
+            if check:
+                msg = ''
+            else:
+                msg = f"The probability distribution for the employment (part timewithout full time) distribution for {location.location_name} with num_bins = {i.num_bins} has some negative values, {arr_i[negative]}, at the indices {negative}.\n"
+            msgs.append(msg)
+
+        else:
+            checks.append(False)
+            msgs.append(f"The probability distribution for the employment (part time) distribution for {location.location_name} does not have num_bins.")
+    msg = "".join(msgs)
+    if msg == "": # pragma: no cover
+        msg = None
+    return [sum(checks) > 0, msg]
+
 
 def check_probability_distribution_sum(location, property_name, tolerance=1e-2, valid_properties=None, **kwargs):
     """
@@ -573,7 +1427,35 @@ def check_probability_distribution_sum(location, property_name, tolerance=1e-2, 
     if property_name == 'population_age_distributions':
         check, msg = check_probability_distribution_sum_age_distributions(location, arr, **kwargs)
         return check, msg
+    elif property_name == 'sex_byage_distributions' or property_name == 'occupation_bysex_distributions' or property_name == 'occupation_byage_distributions':
+        startfromindex = 0
 
+        if property_name == 'sex_byage_distributions' or property_name == 'occupation_byage_distributions':
+            startfromindex = 2
+        else:
+            startfromindex = 1
+
+        check, msg = check_probability_distribution_generic(location, arr, startfromindex, property_name, **kwargs)
+        return check, msg
+    elif property_name == "employment_byindustry_distributions":
+        check, msg = check_probability_distribution_sum_employment_distributions(location, arr, property_name,  **kwargs)
+        return check, msg
+    elif property_name == "employment_byindustry_ftpt_distributions":
+        check, msg = check_probability_distribution_sum_employment_ftpt_distributions(location, arr, property_name,  **kwargs)
+        return check, msg
+    # elif property_name == "education_byage_distributions":
+    #     check, msg = check_probability_distribution_sum_education_byage_distributions(location, arr, **kwargs)
+    #     return check, msg
+    elif property_name == "education_byage_distributions" or property_name == "longtermillness_byage_distributions" or property_name == "bmi_byage_distributions" or property_name == "employment_status_byage_distributions":
+        start_index = 2
+
+        check, msg = check_probability_distribution_sum_male_female_byage_distributions(location, arr, property_name, start_index, **kwargs)
+        return check, msg
+    elif property_name == "numofcomorbidities_byage_distribution" or property_name == "comorbiditytypes_byage_distribution":
+        startfromindex = 2
+
+        check, msg = check_probability_distribution_generic_nonumbins(location, arr, startfromindex, property_name, **kwargs)
+        return check, msg
     elif len(arr):
 
         arr = np.array(arr)
@@ -615,10 +1497,15 @@ def check_probability_distribution_nonnegative(location, property_name, valid_pr
 
     arr = get_location_attr(location, property_name)
 
-    if property_name == 'population_age_distributions':
+    if property_name == 'population_age_distributions' or property_name == 'sex_byage_distributions' or property_name == 'occupation_bysex_distributions' or property_name == 'occupation_byage_distributions':
         check, msg = check_probability_distribution_nonnegative_age_distributions(location, arr)
         return check, msg
-
+    elif property_name == 'education_byage_distributions' or property_name == "longtermillness_byage_distributions" or property_name == "bmi_byage_distributions" or property_name == "employment_status_byage_distributions" or property_name == "employment_byindustry_distributions" or property_name == 'employment_byindustry_ftpt_distributions':
+        check, msg = check_probability_distribution_nonnegative_malefemalesplit_distributions(location, arr)
+        return check, msg
+    elif property_name == "numofcomorbidities_byage_distribution" or property_name == "comorbiditytypes_byage_distribution":
+        check, msg = check_probability_distribution_nonnegative_age_distributions_nonumbins(location, property_name, arr)
+        return check, msg
     elif len(arr):
         arr = np.array(arr)
 
@@ -817,7 +1704,6 @@ def check_household_size_distribution(location):
         [True, None] if checks pass. [False, str] if checks fail.
     """
     return check_array_of_arrays_entry_lens(location, 2, 'household_size_distribution')
-
 
 def check_ltcf_resident_to_staff_ratio_distribution(location):
     """

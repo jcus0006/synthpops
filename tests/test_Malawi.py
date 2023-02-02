@@ -9,15 +9,17 @@ import pytest
 
 
 pars = sc.objdict(
-    n                = settings.pop_sizes.small,
-    rand_seed        = 123,
+    n                =  settings.pop_sizes.small,
+    rand_seed        =  123,
 
-    household_method = 'fixed_ages',
-    smooth_ages      = 1,
+    household_method =  'fixed_ages',
+    smooth_ages      =  1,
 
-    country_location = 'Malawi',
-    sheet_name       = 'Zambia',  # no malawi contact patterns in prem et al. 2017
-    use_default      = True,
+    country_location =  'Malawi',
+    sheet_name       =  'Zambia',  # no malawi contact patterns in prem et al. 2017
+    with_school_types = True,
+    use_default      =  True,
+    save_to_json_file     = True
 )
 
 

@@ -13,6 +13,17 @@ default_pop_size = 200
 valid_probability_distributions = [
     'population_age_distributions',
     'household_size_distribution',
+    'sex_byage_distributions',
+    'education_byage_distributions',
+    # 'occupation_bysex_distributions',
+    # 'occupation_byage_distributions',
+    'numofcomorbidities_byage_distribution',
+    'comorbiditytypes_byage_distribution',
+    'longtermillness_byage_distributions',
+    'bmi_byage_distributions',
+    'employment_status_byage_distributions',
+    'employment_byindustry_distributions',
+    'employment_byindustry_ftpt_distributions'
     # 'ltcf_resident_to_staff_ratio_distribution',
     # 'ltcf_num_residents_distribution',
     # 'school_size_distribution',
