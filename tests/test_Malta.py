@@ -1,4 +1,4 @@
-"""Test Malawi location works and plot the demographics and contact networks."""
+"""Test Malta location works and plot the demographics and contact networks."""
 import sciris as sc
 import synthpops as sp
 import numpy as np
@@ -15,35 +15,36 @@ pars = sc.objdict(
     household_method =  'fixed_ages',
     smooth_ages      =  1,
 
-    country_location =  'Malawi',
-    sheet_name       =  'Zambia',  # no malawi contact patterns in prem et al. 2017
+    country_location =  'Malta',
+    sheet_name       =  'Malta',
     with_school_types = True,
     with_non_teaching_staff = True,
-    average_student_teacher_ratio = 20,
-    average_student_all_staff_ratio = 10,
+    average_student_teacher_ratio = 10.5, # 10.5 worked best based on Population (end of 2020) and Enrollment data (2021) (Eurostat suggested a ratio of 8.8)
+    average_student_all_staff_ratio = 5, # 48% of all staff = non teaching staff, according to NSO
     teacher_age_min = 15,
-    teacher_age_max = 65,
+    teacher_age_max = 95,
     staff_age_min = 15,
-    staff_age_max = 65,
+    staff_age_max = 95,
+    with_facilities = True,
     use_default      =  True,
     save_to_json_file     = True
 )
 
 
-def test_Malawi():
-    """Test Malawi population constructed."""
-    sp.logger.info("Test that Malawi contact networks can be made. Not a guarantee that the population made matches age mixing patterns well yet.")
+def test_Malta():
+    """Test Malta population constructed."""
+    sp.logger.info("Test that Malta contact networks can be made. Not a guarantee that the population made matches age mixing patterns well yet.")
 
     # reset the default location to pull other data
     sp.set_location_defaults(country_location="Senegal")
     # make a basic population
     pop = sp.Pop(**pars)
-    assert pop.country_location == 'Malawi', "population location information is not set to Malawi"
+    assert pop.country_location == 'Malta', "population location information is not set to Malta"
     sp.reset_default_settings()  # reset defaults
 
 
 def pop_exploration():
-    sp.logger.info("Exploration of the Malawi population generation with default methods and missing data filled in with Senegal data")
+    sp.logger.info("Exploration of the Malta population generation with default methods and missing data filled in with Senegal data")
     sp.set_location_defaults(country_location="Senegal")
     pop = sp.Pop(**pars)
     print(pop.summarize())
@@ -55,5 +56,5 @@ def pop_exploration():
 
 
 if __name__ == '__main__':
-    test_Malawi()
+    test_Malta()
     pop_exploration()

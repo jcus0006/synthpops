@@ -15,6 +15,7 @@ from . import ltcfs as spltcf
 from . import households as sphh
 from . import schools as spsch
 from . import workplaces as spw
+from . import workplacescustom as spwc
 from . import contact_networks as spcnx
 from . import plotting as sppl
 from . import people as spp
@@ -23,6 +24,7 @@ import json
 import os
 from .util.NpEncoder import NpEncoder
 import random
+from copy import deepcopy
 
 __all__ = ['Pop', 'make_population', 'generate_synthetic_population']
 
@@ -342,7 +344,7 @@ class Pop(sc.prettyobj):
         age_by_uid_arr = np.array([age_by_uid[i] for i in range(self.n)], dtype=int)
         self.age_by_uid = age_by_uid_arr
 
-        # JC - Assign age based demographics
+        # JC - Assign demographics
         self.sex_by_uid, self.empstatus_by_uid, self.empind_by_uid, self.empftpt_by_uid, self.edu_by_uid, self.lti_by_uid, self.bmi_by_uid = self.assign_demographics(age_by_uid)
 
         facilities_by_uid_lists = homes_by_uids[0:len(facilities)]
@@ -390,36 +392,44 @@ class Pop(sc.prettyobj):
 
         # Find people who can be workers (removing everyone who is currently a student)
         uids_by_age = spb.get_ids_by_age(age_by_uid)  # Make a dictionary listing out uids of people by their age
-        potential_worker_uids, potential_worker_uids_by_age, potential_worker_ages_left_count = spw.get_uids_potential_workers(student_uid_lists,
-                                                                                                                               employment_rates,
-                                                                                                                               age_by_uid)
-        workers_by_age_to_assign_count = spw.get_workers_by_age_to_assign(employment_rates, potential_worker_ages_left_count, uids_by_age)
+        # potential_worker_uids, potential_worker_uids_by_age, potential_worker_ages_left_count = spw.get_uids_potential_workers(student_uid_lists,
+        #                                                                                                                        employment_rates,
+        #                                                                                                                        age_by_uid)
+        # workers_by_age_to_assign_count = spw.get_workers_by_age_to_assign(employment_rates, potential_worker_ages_left_count, uids_by_age)
+
+        # JC - workers are defined as of this stage. Ages only to be used for assignment purposes. employment_rates not applicable anymore
+        potential_worker_uids, potential_worker_uids_by_age, potential_worker_ages_left_count = spwc.get_uids_workers(self.empstatus_by_uid, age_by_uid)
+
+        # workers_by_age_to_assign_count = spwc.get_workers_by_age_to_assign(employment_rates, potential_worker_ages_left_count, uids_by_age)
+
+        edu_potential_worker_uids, edu_potential_worker_uids_by_age, edu_potential_worker_ages_left_count, edu_workers_by_age_to_assign_count = spwc.get_uids_workers_by_industry(potential_worker_uids, self.empind_by_uid, 16)
 
         # Removing facilities residents from potential workers
-        potential_worker_uids, potential_worker_uids_by_age, workers_by_age_to_assign_count = spltcf.remove_ltcf_residents_from_potential_workers(facilities_by_uid_lists,
-                                                                                                                                                  potential_worker_uids,
-                                                                                                                                                  potential_worker_uids_by_age,
-                                                                                                                                                  workers_by_age_to_assign_count,
-                                                                                                                                                  age_by_uid)
+        # potential_worker_uids, potential_worker_uids_by_age, workers_by_age_to_assign_count = spltcf.remove_ltcf_residents_from_potential_workers(facilities_by_uid_lists,
+        #                                                                                                                                           potential_worker_uids,
+        #                                                                                                                                           potential_worker_uids_by_age,
+        #                                                                                                                                           workers_by_age_to_assign_count,
+        #                                                                                                                                           age_by_uid)
 
         # Assign teachers and update school lists
+        # JC - To remove employment_rates (already not used). To pass list of education workers (ind=16). Retain age dependencies if used for assignment purposes. Every teacher assigned to be removed from list.
         teacher_age_lists, teacher_uid_lists, potential_worker_uids, potential_worker_uids_by_age, workers_by_age_to_assign_count = spsch.assign_teachers_to_schools(student_age_lists,
                                                                                                                                                                      student_uid_lists,
-                                                                                                                                                                     employment_rates,
-                                                                                                                                                                     workers_by_age_to_assign_count,
-                                                                                                                                                                     potential_worker_uids,
-                                                                                                                                                                     potential_worker_uids_by_age,
-                                                                                                                                                                     potential_worker_ages_left_count,
+                                                                                                                                                                     edu_workers_by_age_to_assign_count,
+                                                                                                                                                                     edu_potential_worker_uids,
+                                                                                                                                                                     edu_potential_worker_uids_by_age,
+                                                                                                                                                                     edu_potential_worker_ages_left_count,
                                                                                                                                                                      average_student_teacher_ratio=average_student_teacher_ratio,
                                                                                                                                                                      teacher_age_min=teacher_age_min,
                                                                                                                                                                      teacher_age_max=teacher_age_max)
         # Assign non teaching staff and update who's available to work at other places
+        # JC - To pass remaining education workers. Retain age dependency if used for assignment purposes. Every staff person assigned to be removed from list. Remaining agents after this step to be assigned later with normal method.
         non_teaching_staff_uid_lists, potential_worker_uids, potential_worker_uids_by_age, workers_by_age_to_assign_count = spsch.assign_additional_staff_to_schools(student_uid_lists,
                                                                                                                                                                      teacher_uid_lists,
-                                                                                                                                                                     workers_by_age_to_assign_count,
-                                                                                                                                                                     potential_worker_uids,
-                                                                                                                                                                     potential_worker_uids_by_age,
-                                                                                                                                                                     potential_worker_ages_left_count,
+                                                                                                                                                                     edu_workers_by_age_to_assign_count,
+                                                                                                                                                                     edu_potential_worker_uids,
+                                                                                                                                                                     edu_potential_worker_uids_by_age,
+                                                                                                                                                                     edu_potential_worker_ages_left_count,
                                                                                                                                                                      average_student_teacher_ratio=average_student_teacher_ratio,
                                                                                                                                                                      average_student_all_staff_ratio=average_student_all_staff_ratio,
                                                                                                                                                                      staff_age_min=staff_age_min,
@@ -427,7 +437,10 @@ class Pop(sc.prettyobj):
                                                                                                                                                                      with_non_teaching_staff=with_non_teaching_staff)
 
         # Get facility staff
+        # JC - Similar to education. Pass filtered list of ind 17 workers. remaining workers in ind17 to be assigned later
         if with_facilities:
+            fac_potential_worker_uids, fac_potential_worker_uids_by_age, fac_potential_worker_ages_left_count, fac_workers_by_age_to_assign_count = spwc.get_uids_workers_by_industry(potential_worker_uids, self.empind_by_uid, 17)
+
             facilities_staff_uid_lists = spltcf.assign_facility_staff(datadir,
                                                                       location,
                                                                       state_location,
@@ -435,9 +448,9 @@ class Pop(sc.prettyobj):
                                                                       ltcf_staff_age_min,
                                                                       ltcf_staff_age_max,
                                                                       facilities,
-                                                                      workers_by_age_to_assign_count,
-                                                                      potential_worker_uids_by_age,
-                                                                      potential_worker_uids,
+                                                                      fac_workers_by_age_to_assign_count,
+                                                                      fac_potential_worker_uids_by_age,
+                                                                      fac_potential_worker_uids,
                                                                       facilities_by_uid_lists,
                                                                       age_by_uid,
                                                                       use_default=use_default)
@@ -734,12 +747,11 @@ class Pop(sc.prettyobj):
                 age = age_range_to_empstatus_percentages.index(age_group)
                 cdf = empstatus_cdfs[age]
                 empstatus = np.argmax(cdf > np.random.rand())
-
-            empstatus_by_uid[uid] = empstatus # 0: employed, 1: unemployed. 2: inactive
+                empstatus_by_uid[uid] = empstatus # 0: employed, 1: unemployed. 2: inactive
 
             # If employed, assign parttime or full time
 
-            if empstatus_by_uid[uid] == 0:
+            if uid in empstatus_by_uid and empstatus_by_uid[uid] == 0:
                 # If employed, assign industry and ft/ptwithft/ptwithoutft status
                 if sex_by_uid[uid] == 0: #male
                     emp_industry_cdfs = empind_male_cdfs
@@ -777,10 +789,8 @@ class Pop(sc.prettyobj):
                 age = age_range_to_education_percentages.index(age_group)
                 cdf = education_cdfs[age]
                 education = np.argmax(cdf > np.random.rand())
-            else:
-                education = 6
 
-            edu_by_uid[uid] = education #0:noschooling, 1:primary, 2:lowersecondary, 3:uppersecondary, 4:postsecondarynontertiary, 5:tertiary, 6:out-of-range (not assigned)
+                edu_by_uid[uid] = education #0:noschooling, 1:primary, 2:lowersecondary, 3:uppersecondary, 4:postsecondarynontertiary, 5:tertiary
 
             # Assign an Occupation (if applicable)
 
@@ -836,10 +846,8 @@ class Pop(sc.prettyobj):
                 age = age_range_to_longtermillness_percentages.index(age_group)
                 cdf = longtermillness_cdfs[age]
                 longtermillness = np.argmax(cdf > np.random.rand())
-            else:
-                longtermillness = 6
 
-            lti_by_uid[uid] = longtermillness #0:withillness, 1:withoutillness
+                lti_by_uid[uid] = longtermillness #0:withillness, 1:withoutillness, -1:not assigned
 
             # Assign a BMI Category (Normal = 0, Overweight = 1, Obese = 2)
 
@@ -863,7 +871,7 @@ class Pop(sc.prettyobj):
                 cdf = bmi_cdfs[age]
                 bmi = np.argmax(cdf > np.random.rand())
 
-            bmi_by_uid[uid] = bmi #0:normal, 1:overweight, 2:obese
+                bmi_by_uid[uid] = bmi #0:normal, 1:overweight, 2:obese, -1:not assigned
 
         return sex_by_uid, empstatus_by_uid, empind_by_uid, empftpt_by_uid, edu_by_uid, lti_by_uid, bmi_by_uid
 

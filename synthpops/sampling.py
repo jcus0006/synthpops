@@ -125,6 +125,21 @@ def sample_from_range(distr, min_val, max_val):
     distr_vals = np.array(list(new_distr.values()), dtype=np.float64)
     return sample_single_dict(distr_keys, distr_vals)
 
+def sample_from_range_custom(distr, min_val, max_val):
+    """
+    Sample from a distribution from min_val to max_val, inclusive.
+
+    Args:
+        distr (dict)  : distribution with integer keys
+        min_val (int) : minimum of the range to sample from
+        max_val (int) : maximum of the range to sample from
+    Returns:
+        A sampled number from the range min_val to max_val in the distribution distr.
+    """
+    new_distr = spb.norm_age_group_custom(distr, min_val, max_val)
+    distr_keys = np.array(list(new_distr.keys()), dtype=np.int64)
+    distr_vals = np.array(list(new_distr.values()), dtype=np.float64)
+    return sample_single_dict(distr_keys, distr_vals)
 
 def check_dist(actual, expected, std=None, dist='norm', check='dist', label=None, alpha=0.05, size=10000, verbose=True, die=False, stats=False):
     """

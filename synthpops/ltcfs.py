@@ -32,7 +32,7 @@ def generate_ltcfs(n, with_facilities, loc_pars, expected_age_dist, ages_left_to
     if with_facilities:
 
         # what the ltcf user rates by age?
-        ltcf_rates_by_age = spdata.get_long_term_care_facility_use_rates(loc_pars.datadir, country_location=loc_pars.country_location, state_location=loc_pars.state_location)
+        ltcf_rates_by_age = spdata.get_long_term_care_facility_use_rates(loc_pars.datadir, country_location=loc_pars.country_location, state_location=loc_pars.state_location, use_default=True)
 
         # generate the count of ltcf users by age and make a list of all users represented by their age
         expected_users_by_age = dict.fromkeys(expected_age_dist.keys(), 0)

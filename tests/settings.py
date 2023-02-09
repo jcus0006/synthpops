@@ -6,6 +6,7 @@ pop_sizes = sc.objdict(
     medium       = 8e3,
     medium_large = 12e3,
     large        = 20e3,
+    malta        = 519562
 )
 
 def get_full_feature_pars():

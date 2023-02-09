@@ -28,6 +28,9 @@ from . import sampling as spsamp
 from . import contact_networks as spcnx
 from .config import logger as log
 
+import random
+import copy
+
 
 __all__ = ['get_school_type_labels', 'count_enrollment_by_school_type',
            'get_generated_school_size_distributions', 'count_enrollment_by_age',
@@ -1338,7 +1341,7 @@ def get_school_type_data(datadir, location, state_location, country_location, us
     return school_size_distr_by_type, school_size_brackets, school_type_age_ranges
 
 
-def assign_teachers_to_schools(student_age_lists, student_uid_lists, employment_rates, workers_by_age_to_assign_count, potential_worker_uids, potential_worker_uids_by_age, potential_worker_ages_left_count, average_student_teacher_ratio=20, teacher_age_min=25, teacher_age_max=75):
+def assign_teachers_to_schools(student_age_lists, student_uid_lists, workers_by_age_to_assign_count, potential_worker_uids, potential_worker_uids_by_age, potential_worker_ages_left_count, average_student_teacher_ratio=20, teacher_age_min=25, teacher_age_max=75):
     """
     Assign teachers to each school according to the average student-teacher
     ratio.
@@ -1346,7 +1349,6 @@ def assign_teachers_to_schools(student_age_lists, student_uid_lists, employment_
     Args:
         student_age_lists (list)                : list of lists where each sublist is a school with the ages of the students within
         student_uid_lists (list)                : list of lists where each sublist is a school with the ids of the students within
-        employment_rates (dict)                 : employment rates by age
         workers_by_age_to_assign_count (dict)   : dictionary of the count of workers left to assign by age
         potential_worker_uids (dict)            : dictionary of potential workers mapping their id to their age
         potential_worker_uids_by_age (dict)     : dictionary mapping age to the list of worker ids with that age
@@ -1387,7 +1389,7 @@ def assign_teachers_to_schools(student_age_lists, student_uid_lists, employment_
 
         for nt in range(nteachers):
 
-            a = spsamp.sample_from_range(workers_by_age_to_assign_count, teacher_age_min, teacher_age_max)
+            a = spsamp.sample_from_range_custom(workers_by_age_to_assign_count, teacher_age_min, teacher_age_max)
             uid = potential_worker_uids_by_age[a][0]
             teacher_ages.append(a)
             all_teachers[a] += 1
@@ -1479,7 +1481,7 @@ def assign_additional_staff_to_schools(student_uid_lists, teacher_uid_lists, wor
         non_teaching_staff_uids_in_this_school = []
 
         for j in range(n_non_teaching_staff):
-            a = spsamp.sample_from_range(workers_by_age_to_assign_count, staff_age_min, staff_age_max)
+            a = spsamp.sample_from_range_custom(workers_by_age_to_assign_count, staff_age_min, staff_age_max)
             uid = potential_worker_uids_by_age[a][0]
             workers_by_age_to_assign_count[a] -= 1
             potential_worker_ages_left_count[a] -= 1
@@ -1489,6 +1491,19 @@ def assign_additional_staff_to_schools(student_uid_lists, teacher_uid_lists, wor
             non_teaching_staff_uids_in_this_school.append(uid)
 
         non_teaching_staff_uid_lists.append(non_teaching_staff_uids_in_this_school)
+
+    if len(potential_worker_uids) > 0: # still some assigned, although, this should be minimal
+        potential_worker_uids_copy = copy.deepcopy(potential_worker_uids) # create a deep copy, so when removed it doesn't affect dict in iteration
+
+        for uid, age in potential_worker_uids_copy.items():
+            random_school_uids = random.choice(non_teaching_staff_uid_lists)
+
+            random_school_uids.append(uid)
+
+            workers_by_age_to_assign_count[age] -= 1
+            potential_worker_ages_left_count[age] -= 1
+            potential_worker_uids.pop(uid, None)
+            potential_worker_uids_by_age[age].remove(uid)
 
     return non_teaching_staff_uid_lists, potential_worker_uids, potential_worker_uids_by_age, workers_by_age_to_assign_count
 

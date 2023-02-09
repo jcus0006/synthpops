@@ -125,6 +125,21 @@ def norm_age_group(age_dic, age_min, age_max):
     dic = {a: age_dic[a] for a in range(age_min, age_max + 1)}
     return norm_dic(dic)
 
+def norm_age_group_custom(age_dic, age_min, age_max):
+    """
+    Create a normalized dictionary for the range ``age_min`` to ``age_max``, inclusive.
+
+    Args:
+        age_dic (dict) : A dictionary with numerical values.
+        age_min (int)  : The minimum value of the range for the dictionary.
+        age_max (int)  : The maximum value of the range for the dictionary.
+
+    Returns:
+        A normalized dictionary for keys in the range ``age_min`` to ``age_max``, inclusive.
+    """
+    dic = {a: age_dic[a] for a in range(age_min, age_max + 1) if a in age_dic}
+    return norm_dic(dic)
+
 
 # Functions related to age distributions
 __all__ += ['get_index_by_brackets', 'get_age_by_brackets', 'get_ids_by_age']
