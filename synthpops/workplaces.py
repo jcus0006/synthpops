@@ -6,6 +6,7 @@ from . import base as spb
 from . import sampling as spsamp
 from .config import logger as log
 from . import defaults
+from .industry import Industry
 
 
 __all__ = ['count_employment_by_age', 'get_workplace_sizes',
@@ -23,7 +24,7 @@ class Workplace(spb.LayerGroup):
         kwargs (dict): data dictionary of the workplace
     """
 
-    def __init__(self, wpid=None, **kwargs):
+    def __init__(self, wpid=None, indid=None, **kwargs):
         """
         Class constructor for empty workplace.
 
@@ -32,7 +33,7 @@ class Workplace(spb.LayerGroup):
             **member_uids (np.array) : ids of workplace members
         """
         # set up default workplace values
-        super().__init__(wpid=wpid, **kwargs)
+        super().__init__(wpid=wpid, indid=indid, **kwargs)
         self.validate()
 
         return
@@ -46,7 +47,7 @@ class Workplace(spb.LayerGroup):
         return
 
 
-__all__ += ['get_workplace', 'add_workplace', 'initialize_empty_workplaces', 'populate_workplaces']
+__all__ += ['get_workplace', 'add_workplace', 'initialize_empty_workplaces', 'populate_industries_and_workplaces']
 
 
 def get_workplace(pop, wpid):
@@ -85,6 +86,21 @@ def add_workplace(pop, workplace):
     pop.n_workplaces = len(pop.workplaces)
     return
 
+def initialize_empty_industries(pop, n_industries=None):
+    """
+    Array of empty industries.
+
+    Args:
+        pop (sp.Pop)       : population
+        n_industries (int) : the number of industries to initialize
+    """
+    if n_industries is not None and isinstance(n_industries, int):
+        pop.n_industries = n_industries
+    else:
+        pop.n_industries = 0
+
+    pop.industries = [Industry() for nw in range(pop.n_industries)]
+    return
 
 def initialize_empty_workplaces(pop, n_workplaces=None):
     """
@@ -103,7 +119,7 @@ def initialize_empty_workplaces(pop, n_workplaces=None):
     return
 
 
-def populate_workplaces(pop, workplaces):
+def populate_industries_and_workplaces(pop, industry_workplaces):
     """
     Populate all of the workplaces. Store each workplace at the index corresponding to it's wpid.
 
@@ -115,20 +131,39 @@ def populate_workplaces(pop, workplaces):
         If number of workplaces (n) is fewer than existing workplaces, it will only replace the first n workplaces. Otherwise the
         existing workplaces will be overwritten by the input workplaces.
     """
-    # make sure there are enough workplaces
-    initialize_empty_workplaces(pop, len(workplaces))
 
     log.debug("Populating workplaces.")
 
-    # now populate workplaces
-    for nw, wp in enumerate(workplaces):
-        kwargs = dict(wpid=nw,
-                      member_uids=wp,
-                      )
-        workplace = Workplace()
-        workplace.set_layer_group(**kwargs)
-        pop.workplaces[workplace['wpid']] = sc.dcp(workplace)
+    initialize_empty_industries(pop, len(industry_workplaces.keys()))
 
+    workplaces_len = sum([len(workplaces) for workplaces in industry_workplaces.values()])
+    initialize_empty_workplaces(pop, workplaces_len)
+
+    workplaceindex = 0
+    industryindex = 0
+    # now populate workplaces
+    for industry, workplaces in industry_workplaces.items():
+        # make sure there are enough workplaces
+
+        ind_workplaces = []
+        for nw, wp in enumerate(workplaces):
+            kwargs = dict(wpid=workplaceindex,
+                            indid=industry,
+                            member_uids=wp,
+                        )
+            workplace = Workplace()
+            workplace.set_layer_group(**kwargs)
+            ind_workplaces.append(workplaceindex)
+            pop.workplaces[workplace['wpid']] = sc.dcp(workplace)
+            workplaceindex += 1
+
+        ind_kwargs = dict(indid=industry, member_uids=ind_workplaces)
+        new_industry = Industry()
+        new_industry.set_layer_group(**ind_kwargs)
+        pop.industries[industryindex] = new_industry
+
+        industryindex += 1
+        
     return
 
 
@@ -240,7 +275,7 @@ def get_workers_by_age_to_assign(employment_rates, potential_worker_ages_left_co
     return workers_by_age_to_assign_count
 
 
-def assign_rest_of_workers(workplace_sizes, potential_worker_uids, potential_worker_uids_by_age, workers_by_age_to_assign_count, age_by_uid, age_brackets, age_by_brackets, contact_matrices):
+def assign_rest_of_workers(all_worker_uids, workplace_sizes, potential_worker_uids, potential_worker_uids_by_age, workers_by_age_to_assign_count, age_by_uid, age_brackets, age_by_brackets, contact_matrices):
     """
     Assign the rest of the workers to non-school workplaces.
 
@@ -270,7 +305,7 @@ def assign_rest_of_workers(workplace_sizes, potential_worker_uids, potential_wor
 
     # off turn likelihood to meet those unemployed in the workplace because the matrices are not an exact match for the population under study
     for b in age_brackets:
-        workers_left_in_bracket = [workers_by_age_to_assign_count[a] for a in age_brackets[b]]
+        workers_left_in_bracket = [workers_by_age_to_assign_count[a] for a in age_brackets[b] if a in workers_by_age_to_assign_count and workers_by_age_to_assign_count[a] > 0]
         number_of_workers_left_in_bracket = np.sum(workers_left_in_bracket)
         if number_of_workers_left_in_bracket == 0:
             b = min(b, w_contact_matrix.shape[1] - 1)  # Ensure it doesn't go past the end of the array
@@ -294,6 +329,7 @@ def assign_rest_of_workers(workplace_sizes, potential_worker_uids, potential_wor
         uid = potential_worker_uids_by_age[aindex][0]
         potential_worker_uids_by_age[aindex].remove(uid)
         potential_worker_uids.pop(uid, None)
+        all_worker_uids.pop(uid, None)
         workers_by_age_to_assign_count[aindex] -= 1
         workers_by_age_to_assign_distr = spb.norm_dic(workers_by_age_to_assign_count)
         new_work.append(aindex)
@@ -321,6 +357,8 @@ def assign_rest_of_workers(workplace_sizes, potential_worker_uids, potential_wor
                     new_work_uids.append(uid)
                     potential_worker_uids_by_age[ai].remove(uid)
                     potential_worker_uids.pop(uid, None)
+                    all_worker_uids.pop(uid, None)
+
                 workers_by_age_to_assign_count[ai] = 0  # set to zero now that everyone will be placed in this last workplace
             workers_by_age_to_assign_distr = spb.norm_dic(workers_by_age_to_assign_count)
         else:
@@ -328,27 +366,41 @@ def assign_rest_of_workers(workplace_sizes, potential_worker_uids, potential_wor
 
                 bi = spsamp.fast_choice(b_prob)
 
-                workers_left_in_bracket = [workers_by_age_to_assign_count[a] for a in age_brackets[bi] if len(potential_worker_uids_by_age[a]) > 0]
+                workers_left_in_bracket = [workers_by_age_to_assign_count[a] for a in age_brackets[bi] if a in workers_by_age_to_assign_count and workers_by_age_to_assign_count[a] > 0]
 
                 if np.sum(b_prob): # pragma: no cover
                     loop_b_prob = sc.dcp(b_prob)  # Make a copy to avoid overwriting the original
                     while np.sum(workers_left_in_bracket) == 0:
                         loop_b_prob[bi] = 0  # Don't pick the same bracket ever again
                         bi = spsamp.fast_choice(loop_b_prob)
-                        workers_left_in_bracket = [workers_by_age_to_assign_count[a] for a in age_brackets[bi] if len(potential_worker_uids_by_age[a]) > 0]
-                    a_prob = [workers_by_age_to_assign_count[a] for a in age_brackets[bi]]
-                    ai = age_brackets[bi][spsamp.fast_choice(a_prob)]
+                        workers_left_in_bracket = [workers_by_age_to_assign_count[a] for a in age_brackets[bi] if a in workers_by_age_to_assign_count and workers_by_age_to_assign_count[a] > 0]
+                    
+                    a_prob = [workers_by_age_to_assign_count[a] for a in age_brackets[bi] if a in workers_by_age_to_assign_count and workers_by_age_to_assign_count[a] > 0]
 
-                    uid = potential_worker_uids_by_age[ai][0]
+                    loop_a_prob = sc.dcp(a_prob) # make a copy to avoid overwriting the original
+
+                    foundageinbracket = False
+
+                    while foundageinbracket == False:                      
+                        # ai = age_brackets[bi][spsamp.fast_choice(loop_a_prob)]
+                        ai = np.random.choice(age_brackets[bi])
+
+                        if ai in potential_worker_uids_by_age and len(potential_worker_uids_by_age[ai]) > 0:
+                            foundageinbracket = True
+                            uid = potential_worker_uids_by_age[ai][0]
+                        # else:
+                        #     loop_a_prob[bi] = 0 # Don't pick the same bracket ever again
+
                     new_work.append(ai)
                     new_work_uids.append(uid)
                     potential_worker_uids_by_age[ai].remove(uid)
                     potential_worker_uids.pop(uid, None)
+                    all_worker_uids.pop(uid, None)
                     workers_by_age_to_assign_count[ai] -= 1
                     workers_by_age_to_assign_distr = spb.norm_dic(workers_by_age_to_assign_count)
 
                 # if there's no one left in the bracket, then you should turn this bracket off in the contact matrix
-                workers_left_in_bracket = [workers_by_age_to_assign_count[a] for a in age_brackets[bi]]
+                workers_left_in_bracket = [workers_by_age_to_assign_count[a] for a in age_brackets[bi] if a in workers_by_age_to_assign_count and workers_by_age_to_assign_count[a] > 0]
                 if np.sum(workers_left_in_bracket) == 0:
                     w_contact_matrix[:, bi] = 0.
                     # since the matrix was modified, calculate the bracket probabilities again
@@ -359,7 +411,7 @@ def assign_rest_of_workers(workplace_sizes, potential_worker_uids, potential_wor
         log.debug(f'  Progress: {n}, {Counter(new_work)}')
         workplace_age_lists.append(new_work)
         workplace_uid_lists.append(new_work_uids)
-    return workplace_age_lists, workplace_uid_lists, potential_worker_uids, potential_worker_uids_by_age, workers_by_age_to_assign_count
+    return workplace_age_lists, workplace_uid_lists, all_worker_uids, potential_worker_uids_by_age, workers_by_age_to_assign_count
 
 
 def count_employment_by_age(popdict):

@@ -195,6 +195,16 @@ class Location(JsonObject):
         ListProperty(DefaultProperty)
     )
 
+    institutions_rates_by_age = ListProperty(
+        # [minage, maxage, percentage]
+        ListProperty(DefaultProperty)
+    )
+
+    institutions_type_distribution = ListProperty(
+        # [type, percentage]
+        ListProperty(DefaultProperty)
+    )
+
     school_size_brackets = ListProperty(
         # [school_size_low, school_size_hi]
         ListProperty(DefaultProperty)
@@ -706,6 +716,8 @@ def are_location_constraints_satisfied(location):
               check_ltcf_resident_to_staff_ratio_distribution,
               check_ltcf_num_residents_distribution,
               check_ltcf_num_staff_distribution,
+              check_institutions_rates_by_age,
+              check_institutions_type_distribution,
               check_school_size_brackets,
               check_school_size_distribution,
               check_school_size_distribution_by_type,
@@ -1745,6 +1757,33 @@ def check_ltcf_num_staff_distribution(location):
         [True, None] if checks pass. [False, str] if checks fail.
     """
     return check_array_of_arrays_entry_lens(location, 3, 'ltcf_num_staff_distribution')
+
+def check_institutions_rates_by_age(location):
+    """
+    Check that the institutions rates by age is an array of arrays, where each
+    sub array has length 3.
+
+    Args:
+        location (json): the json object with location data
+
+    Returns:
+        [True, None] if checks pass. [False, str] if checks fail.
+    """
+    return check_array_of_arrays_entry_lens(location, 3, 'institutions_rates_by_age')
+
+
+def check_institutions_type_distribution(location):
+    """
+    Check that the institutions type distribution is an array of arrays, where each
+    sub array has length 2.
+
+    Args:
+        location (json): the json object with location data
+
+    Returns:
+        [True, None] if checks pass. [False, str] if checks fail.
+    """
+    return check_array_of_arrays_entry_lens(location, 2, 'institutions_type_distribution')
 
 
 def check_school_size_brackets(location):

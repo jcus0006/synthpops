@@ -11,6 +11,7 @@ from . import defaults as spd
 from . import sampling as spsamp
 from . import data_distributions as spdata
 from . import base as spb
+from .institutiontype import InstitutionType
 
 
 def generate_ltcfs(n, with_facilities, loc_pars, expected_age_dist, ages_left_to_assign):
@@ -33,7 +34,7 @@ def generate_ltcfs(n, with_facilities, loc_pars, expected_age_dist, ages_left_to
 
         # what the ltcf user rates by age?
         ltcf_rates_by_age = spdata.get_long_term_care_facility_use_rates(loc_pars.datadir, country_location=loc_pars.country_location, state_location=loc_pars.state_location, use_default=True)
-
+        
         # generate the count of ltcf users by age and make a list of all users represented by their age
         expected_users_by_age = dict.fromkeys(expected_age_dist.keys(), 0)
 
@@ -82,6 +83,99 @@ def generate_ltcfs(n, with_facilities, loc_pars, expected_age_dist, ages_left_to
         ltcf_adjusted_age_dist_values = np.array([ltcf_adjusted_age_dist[a] for a in ltcf_adjusted_age_dist])
 
     return n_nonltcf, ltcf_adjusted_age_dist, ltcf_adjusted_age_dist_values, ages_left_to_assign, facilities
+
+def generate_institutions(n, with_institutions, loc_pars, expected_age_dist, ages_left_to_assign, use_brackets = False):
+    """
+    Generate residents living in institutions and their ages.
+
+    Args:
+        n (int)                   : The number of people to generate in the population
+        with_facilities (bool)    : If True, create institutions
+        loc_pars (dict)           : A dictionary of location parameters
+        expected_age_dist (dict)  : The expected age distribution
+        ages_left_to_assign (dic) : The counter of ages for the generated population left to place in a residence
+    """
+    log.debug('generate_institutions()')
+    # initialize an empty list for instutions
+    institutions = {} # dict where institution type is the key, and the value is an array of arrays, and each array is an institution/facility
+
+    # If not using institutions, skip everything here
+    if with_institutions:
+
+        # handle brackets
+        institutions_rates_by_age = spdata.get_institutions_rates_by_age(loc_pars.datadir, country_location=loc_pars.country_location, state_location=loc_pars.state_location, use_default=True)
+        
+        # generate the count of ltcf users by age and make a list of all users represented by their age
+        expected_users_by_age = dict.fromkeys(expected_age_dist.keys(), 0)
+
+        # make a list of all resident ages
+        all_residents = []
+        for a in expected_users_by_age:
+            percentage_by_age_bracket = [bracket[2] for bracket in institutions_rates_by_age if bracket[0] <= a and bracket[1] >= a]
+            expected_users_by_age[a] = np.random.binomial(ages_left_to_assign[a], percentage_by_age_bracket[0])  # use the rates to sample the number of ltcf residents by age
+            all_residents.extend([a] * expected_users_by_age[a])
+
+        # shuffle resident ages
+        np.random.shuffle(all_residents)
+
+        institutions_type_dist = spdata.get_institutions_type_distribution(loc_pars.datadir, country_location=loc_pars.country_location, state_location=loc_pars.state_location, use_default=True)
+
+        if institutions_type_dist is not None:
+            # Create CDF
+            institutions_type_percents = [v for v in institutions_type_dist.values()]
+            institutions_type_cdfs = [sum(institutions_type_percents[:i+1])/sum(institutions_type_percents) for i in range(len(institutions_type_percents))]
+
+        # how big are long term care facilities
+        resident_size_dist = spb.norm_dic(spdata.get_long_term_care_facility_residents_distr(**loc_pars))
+        resident_size_brackets = spdata.get_long_term_care_facility_residents_distr_brackets(**loc_pars)
+
+        size_bracket_keys = sorted(resident_size_dist.keys())
+        size_dist = [resident_size_dist[k] for k in size_bracket_keys]
+
+        # create facilities
+        while len(all_residents) > 0:
+
+            b = spsamp.fast_choice(size_dist)
+            size = np.random.choice(resident_size_brackets[b])
+
+            if size > len(all_residents):
+                size = len(all_residents)
+
+            # assign institution type to new facility
+            random_value = np.random.random()
+            institutions_type_index = np.searchsorted(institutions_type_cdfs, random_value, side='right') # 0 based
+
+            institutions_type_index += 1 # back to 1 index based
+
+            if institutions_type_index in institutions:
+                facilities = institutions[institutions_type_index]
+            else:
+                facilities = []
+
+            new_facility = all_residents[:size]
+            facilities.append(new_facility)
+
+            institutions[institutions_type_index] = facilities
+
+            all_residents = all_residents[size:] # remove chosen agents
+
+        # what's the age distribution and count of people left to place in a residence?
+        ltcf_adjusted_age_dist = sc.dcp(expected_age_dist)
+        for a in ltcf_adjusted_age_dist:
+            ltcf_adjusted_age_dist[a] -= expected_users_by_age[a] / n
+            ltcf_adjusted_age_dist[a] = max(ltcf_adjusted_age_dist[a], 0)
+            ages_left_to_assign[a] -= expected_users_by_age[a]
+        ltcf_adjusted_age_dist_values = np.array([ltcf_adjusted_age_dist[a] for a in ltcf_adjusted_age_dist.keys()])
+
+        n_nonltcf = int(n - sum([len(institution) for institutions_in_type in institutions.values() for institution in institutions_in_type]))
+
+    else:
+        n_nonltcf = n
+
+        ltcf_adjusted_age_dist = sc.dcp(expected_age_dist)
+        ltcf_adjusted_age_dist_values = np.array([ltcf_adjusted_age_dist[a] for a in ltcf_adjusted_age_dist])
+
+    return n_nonltcf, ltcf_adjusted_age_dist, ltcf_adjusted_age_dist_values, ages_left_to_assign, institutions
 
 
 def assign_facility_staff(datadir, location, state_location, country_location, ltcf_staff_age_min, ltcf_staff_age_max, facilities, workers_by_age_to_assign_count, potential_worker_uids_by_age, potential_worker_uids, facilities_by_uids, age_by_uid, use_default=False):
@@ -145,6 +239,69 @@ def assign_facility_staff(datadir, location, state_location, country_location, l
 
     return facilities_staff_uids
 
+
+def assign_institutions_staff(all_worker_uids, datadir, location, state_location, country_location, ltcf_staff_age_min, ltcf_staff_age_max, institutions, workers_by_age_to_assign_count, potential_worker_uids_by_age, potential_worker_uids, facilities_by_uids, age_by_uid, use_default=False):
+    """
+    Assign Institutions staff to the generated institutions with residents.
+
+    Args:
+        datadir (string)                      : The file path to the data directory.
+        location                              : name of the location
+        state_location (string)               : name of the state the location is in
+        country_location (string)             : name of the country the location is in
+        ltcf_staff_age_min (int)              : Long term care facility staff minimum age.
+        ltcf_staff_age_max (int)              : Long term care facility staff maximum age.
+        facilities (list)                     : A list of lists where each sublist is a facility with the resident ages
+        workers_by_age_to_assign_count (dict) : A dictionary mapping age to the count of employed individuals of that age.
+        potential_worker_uids (dict)          : dictionary of potential workers mapping their id to their age
+        facilities (list)                     : A list of lists where each sublist is a facility with the resident IDs
+        age_by_uid (dict)                     : dictionary mapping id to age for all individuals in the population
+        use_default (bool)                    : If True, try to first use the other parameters to find data specific to the location under study; otherwise, return default data drawing from default_location, default_state, default_country.
+
+    Returns:
+        list: A list of lists with the facility staff IDs for each facility.
+    """
+    log.debug('assign_facility_staff()')
+    resident_to_staff_ratio_distr = spdata.get_long_term_care_facility_resident_to_staff_ratios_distr(datadir, location=location, state_location=state_location, country_location=country_location, use_default=use_default)
+    resident_to_staff_ratio_distr = spb.norm_dic(resident_to_staff_ratio_distr)
+    resident_to_staff_ratio_brackets = spdata.get_long_term_care_facility_resident_to_staff_ratios_brackets(datadir, location=location, state_location=state_location, country_location=country_location, use_default=use_default)
+
+    institutions_staff = []
+    institutions_staff_uids = []
+
+    sorted_ratio_keys = sorted([k for k in resident_to_staff_ratio_distr.keys()])
+    ratio_array = [resident_to_staff_ratio_distr[k] for k in sorted_ratio_keys]
+
+    staff_age_range = np.arange(ltcf_staff_age_min, ltcf_staff_age_max + 1)
+    for k, facilities_by_type in institutions.items():
+        for nf, fc in enumerate(facilities_by_type):
+            n_residents = len(fc)
+
+            s = spsamp.fast_choice(ratio_array)
+            s_range = resident_to_staff_ratio_brackets[s]
+            resident_staff_ratio = s_range[spsamp.fast_choice(s_range)]
+
+            n_staff = int(np.ceil(n_residents / resident_staff_ratio))
+            new_staff, new_staff_uids = [], []
+
+            for i in range(n_staff):
+                a_prob = np.array([workers_by_age_to_assign_count[a] if a in workers_by_age_to_assign_count else 0 for a in staff_age_range])
+                a_prob = a_prob / np.sum(a_prob)
+                aindex = np.random.choice(a=staff_age_range, p=a_prob)
+
+                uid = potential_worker_uids_by_age[aindex][0]
+                potential_worker_uids_by_age[aindex].remove(uid)
+                potential_worker_uids.pop(uid, None)
+                all_worker_uids.pop(uid, None)
+                workers_by_age_to_assign_count[aindex] -= 1
+
+                new_staff.append(aindex)
+                new_staff_uids.append(uid)
+
+            institutions_staff.append(new_staff)
+            institutions_staff_uids.append(new_staff_uids)
+
+    return all_worker_uids, institutions_staff_uids
 
 def remove_ltcf_residents_from_potential_workers(facilities_by_uids, potential_worker_uids, potential_worker_uids_by_age, workers_by_age_to_assign_count, age_by_uid):
     """
@@ -386,6 +543,21 @@ def add_ltcf(pop, ltcf):
     pop.n_ltcfs = len(pop.ltcfs)
     return
 
+def initialize_empty_institutiontypes(pop, n_inst_types=None):
+    """
+    Array of empty ltcfs.
+
+    Args:
+        pop (sp.Pop)  : population
+        n_ltcfs (int) : the number of ltcfs to initialize
+    """
+    if n_inst_types is not None and isinstance(n_inst_types, int):
+        pop.n_inst_types = n_inst_types
+    else:
+        pop.n_inst_types = 0
+
+    pop.instutiontypes = [InstitutionType() for nl in range(pop.n_inst_types)]
+    return
 
 def initialize_empty_ltcfs(pop, n_ltcfs=None):
     """
@@ -404,7 +576,7 @@ def initialize_empty_ltcfs(pop, n_ltcfs=None):
     return
 
 
-def populate_ltcfs(pop, resident_lists, staff_lists):
+def populate_ltcfs(pop, institution_types, resident_lists, staff_lists):
     """
     Populate all of the ltcfs. Store each ltcf at the index corresponding to it's ltcfid.
 
@@ -413,21 +585,30 @@ def populate_ltcfs(pop, resident_lists, staff_lists):
         residents_list (list) : list of lists where each sublist represents a ltcf and contains the ids of the residents
         staff_lists (list)    : list of lists where each sublist represents a ltcf and contains the ids of the staff
     """
+
+    log.debug("Populating industries.")
+
+    initialize_empty_institutiontypes(pop, len(institution_types.keys()))
+
     initialize_empty_ltcfs(pop, len(resident_lists))
 
-    log.debug("Populating ltcfs.")
+    institutionindex = 0
+    institutiontypeindex = 0
+    # now populate instiutions
+    for institutiontype, institutions in institution_types.items():
+        institutiontype_institutions = []
 
-    # now populate ltcfs
-    for nl, residents in enumerate(resident_lists):
-        lf = []
-        lf.extend(residents)
-        lf.extend(staff_lists[nl])
-        kwargs = dict(ltcfid=nl,
-                      resident_uids=residents,
-                      staff_uids=staff_lists[nl],
-                      )
-        ltcf = LongTermCareFacility()
-        ltcf.set_layer_group(**kwargs)
-        pop.ltcfs[ltcf['ltcfid']] = sc.dcp(ltcf)
+        # now populate institutions
+        for nl, residents in enumerate(institutions):
+            # lf = []
+            # lf.extend(residents)
+            # lf.extend(staff_lists[nl])
+            kwargs = dict(ltcfid=nl,
+                        resident_uids=residents,
+                        staff_uids=staff_lists[nl],
+                        )
+            ltcf = LongTermCareFacility()
+            ltcf.set_layer_group(**kwargs)
+            pop.ltcfs[ltcf['ltcfid']] = sc.dcp(ltcf)
 
     return

@@ -188,25 +188,26 @@ def get_uids_workers_by_industry(potential_worker_uids, empind_by_uid, ind):
         workers with that age, and a dictionary mapping age to the count of potential workers left to assign to a workplace for that age.
     """
     log.debug('get_uids_potential_workers()')
-    potential_worker_uids_by_age = {}
-    potential_worker_ages_left_count = {}
+    industry_potential_worker_uids = {}
+    industry_potential_worker_uids_by_age = {}
+    industry_potential_worker_ages_left_count = {}
 
-    potential_worker_uids = {k:v for k, v in potential_worker_uids.items() if k in empind_by_uid and empind_by_uid[k] == ind}
-    potential_worker_uids_ages = sorted(set(potential_worker_uids.values()))
-    workers_by_age_to_assign_count = {age: sum(1 for x in potential_worker_uids.values() if x == age) for age in potential_worker_uids_ages}
+    industry_potential_worker_uids = {k:v for k, v in potential_worker_uids.items() if k in empind_by_uid and empind_by_uid[k] == ind}
+    industry_potential_worker_uids_ages = sorted(set(industry_potential_worker_uids.values()))
+    industry_workers_by_age_to_assign_count = {age: sum(1 for x in industry_potential_worker_uids.values() if x == age) for age in industry_potential_worker_uids_ages}
     # potential_worker_ages_left_count = deepcopy(potential_worker_uids)
 
-    for age in potential_worker_uids_ages:
-        uidsbyage = [k for k,v in potential_worker_uids.items() if v == age]
+    for age in industry_potential_worker_uids_ages:
+        industry_uidsbyage = [k for k,v in industry_potential_worker_uids.items() if v == age]
 
-        potential_worker_uids_by_age[age] = []
-        potential_worker_ages_left_count[age] = 0
+        industry_potential_worker_uids_by_age[age] = []
+        industry_potential_worker_ages_left_count[age] = 0
 
-        for uid in uidsbyage:
-            potential_worker_uids_by_age[age].append(uid)
-            potential_worker_ages_left_count[age] += 1
+        for uid in industry_uidsbyage:
+            industry_potential_worker_uids_by_age[age].append(uid)
+            industry_potential_worker_ages_left_count[age] += 1
 
-    return potential_worker_uids, potential_worker_uids_by_age, potential_worker_ages_left_count, workers_by_age_to_assign_count
+    return industry_potential_worker_uids, industry_potential_worker_uids_by_age, industry_potential_worker_ages_left_count, industry_workers_by_age_to_assign_count
 
 
 def generate_workplace_sizes(workplace_size_distr_by_bracket, workplace_size_brackets, workers_by_age_to_assign_count):

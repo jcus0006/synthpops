@@ -324,7 +324,7 @@ class Pop(sc.prettyobj):
         ages_left_to_assign = sc.dcp(age_count)
 
         # Generate LTCFs and remove some people from the age count of people left to place in a resident by age
-        n_nonltcf, ltcf_adjusted_age_dist, ltcf_adjusted_age_dist_values, ages_left_to_assign, facilities = spltcf.generate_ltcfs(n, with_facilities, loc_pars, expected_age_dist, ages_left_to_assign)
+        n_nonltcf, ltcf_adjusted_age_dist, ltcf_adjusted_age_dist_values, ages_left_to_assign, institutions = spltcf.generate_institutions(n, with_facilities, loc_pars, expected_age_dist, ages_left_to_assign)
 
         # Generate households
         household_size_dist = spdata.get_household_size_distr(**loc_pars)
@@ -338,16 +338,18 @@ class Pop(sc.prettyobj):
             log.debug("defaulting to 'infer_ages' household generation method. See method notes for description.")
             homes_dic, homes = sphh.generate_all_households_infer_ages(n, n_nonltcf, hh_sizes, hha_by_size, hha_brackets, cm_age_brackets, cm_age_by_brackets, contact_matrices, ltcf_adjusted_age_dist, ages_left_to_assign)
 
-        # Handle homes and facilities
-        homes = facilities + homes
-        homes_by_uids, age_by_uid = sphh.assign_uids_by_homes(homes)  # include facilities to assign ids
+        # Handle homes and institutions
+        institutions_flat = [np.array(institution) for institutions_in_type in institutions.values() for institution in institutions_in_type]
+
+        homes = institutions_flat + homes
+        homes_by_uids, age_by_uid = sphh.assign_uids_by_homes(homes)  # include institutions to assign ids
         age_by_uid_arr = np.array([age_by_uid[i] for i in range(self.n)], dtype=int)
         self.age_by_uid = age_by_uid_arr
 
         # JC - Assign demographics
-        self.sex_by_uid, self.empstatus_by_uid, self.empind_by_uid, self.empftpt_by_uid, self.edu_by_uid, self.lti_by_uid, self.bmi_by_uid = self.assign_demographics(age_by_uid)
+        sex_by_uid, empstatus_by_uid, empind_by_uid, empftpt_by_uid, edu_by_uid, lti_by_uid, bmi_by_uid = self.assign_demographics(age_by_uid)
 
-        facilities_by_uid_lists = homes_by_uids[0:len(facilities)]
+        institutions_by_uid_lists = homes_by_uids[0:len(institutions_flat)]
 
         # Generate school sizes
         school_sizes_dist_by_brackets = spdata.get_school_size_distr_by_brackets(**loc_pars)  # without school type
@@ -388,7 +390,7 @@ class Pop(sc.prettyobj):
             school_type_by_age = None
 
         # Get employment rates
-        employment_rates = spdata.get_employment_rates(**loc_pars)
+        # employment_rates = spdata.get_employment_rates(**loc_pars)
 
         # Find people who can be workers (removing everyone who is currently a student)
         uids_by_age = spb.get_ids_by_age(age_by_uid)  # Make a dictionary listing out uids of people by their age
@@ -398,11 +400,11 @@ class Pop(sc.prettyobj):
         # workers_by_age_to_assign_count = spw.get_workers_by_age_to_assign(employment_rates, potential_worker_ages_left_count, uids_by_age)
 
         # JC - workers are defined as of this stage. Ages only to be used for assignment purposes. employment_rates not applicable anymore
-        potential_worker_uids, potential_worker_uids_by_age, potential_worker_ages_left_count = spwc.get_uids_workers(self.empstatus_by_uid, age_by_uid)
+        potential_worker_uids, potential_worker_uids_by_age, potential_worker_ages_left_count = spwc.get_uids_workers(empstatus_by_uid, age_by_uid)
 
         # workers_by_age_to_assign_count = spwc.get_workers_by_age_to_assign(employment_rates, potential_worker_ages_left_count, uids_by_age)
 
-        edu_potential_worker_uids, edu_potential_worker_uids_by_age, edu_potential_worker_ages_left_count, edu_workers_by_age_to_assign_count = spwc.get_uids_workers_by_industry(potential_worker_uids, self.empind_by_uid, 16)
+        edu_potential_worker_uids, edu_potential_worker_uids_by_age, edu_potential_worker_ages_left_count, edu_workers_by_age_to_assign_count = spwc.get_uids_workers_by_industry(potential_worker_uids, empind_by_uid, 16)
 
         # Removing facilities residents from potential workers
         # potential_worker_uids, potential_worker_uids_by_age, workers_by_age_to_assign_count = spltcf.remove_ltcf_residents_from_potential_workers(facilities_by_uid_lists,
@@ -413,7 +415,8 @@ class Pop(sc.prettyobj):
 
         # Assign teachers and update school lists
         # JC - To remove employment_rates (already not used). To pass list of education workers (ind=16). Retain age dependencies if used for assignment purposes. Every teacher assigned to be removed from list.
-        teacher_age_lists, teacher_uid_lists, potential_worker_uids, potential_worker_uids_by_age, workers_by_age_to_assign_count = spsch.assign_teachers_to_schools(student_age_lists,
+        teacher_age_lists, teacher_uid_lists, potential_worker_uids, potential_worker_uids_by_age, workers_by_age_to_assign_count = spsch.assign_teachers_to_schools(potential_worker_uids,
+                                                                                                                                                                     student_age_lists,
                                                                                                                                                                      student_uid_lists,
                                                                                                                                                                      edu_workers_by_age_to_assign_count,
                                                                                                                                                                      edu_potential_worker_uids,
@@ -424,7 +427,8 @@ class Pop(sc.prettyobj):
                                                                                                                                                                      teacher_age_max=teacher_age_max)
         # Assign non teaching staff and update who's available to work at other places
         # JC - To pass remaining education workers. Retain age dependency if used for assignment purposes. Every staff person assigned to be removed from list. Remaining agents after this step to be assigned later with normal method.
-        non_teaching_staff_uid_lists, potential_worker_uids, potential_worker_uids_by_age, workers_by_age_to_assign_count = spsch.assign_additional_staff_to_schools(student_uid_lists,
+        non_teaching_staff_uid_lists, potential_worker_uids, potential_worker_uids_by_age, workers_by_age_to_assign_count = spsch.assign_additional_staff_to_schools(potential_worker_uids,
+                                                                                                                                                                     student_uid_lists,
                                                                                                                                                                      teacher_uid_lists,
                                                                                                                                                                      edu_workers_by_age_to_assign_count,
                                                                                                                                                                      edu_potential_worker_uids,
@@ -439,25 +443,26 @@ class Pop(sc.prettyobj):
         # Get facility staff
         # JC - Similar to education. Pass filtered list of ind 17 workers. remaining workers in ind17 to be assigned later
         if with_facilities:
-            fac_potential_worker_uids, fac_potential_worker_uids_by_age, fac_potential_worker_ages_left_count, fac_workers_by_age_to_assign_count = spwc.get_uids_workers_by_industry(potential_worker_uids, self.empind_by_uid, 17)
+            fac_potential_worker_uids, fac_potential_worker_uids_by_age, fac_potential_worker_ages_left_count, fac_workers_by_age_to_assign_count = spwc.get_uids_workers_by_industry(potential_worker_uids, empind_by_uid, 17)
 
-            facilities_staff_uid_lists = spltcf.assign_facility_staff(datadir,
-                                                                      location,
-                                                                      state_location,
-                                                                      country_location,
-                                                                      ltcf_staff_age_min,
-                                                                      ltcf_staff_age_max,
-                                                                      facilities,
-                                                                      fac_workers_by_age_to_assign_count,
-                                                                      fac_potential_worker_uids_by_age,
-                                                                      fac_potential_worker_uids,
-                                                                      facilities_by_uid_lists,
-                                                                      age_by_uid,
-                                                                      use_default=use_default)
+            potential_worker_uids, institutions_staff_uid_lists = spltcf.assign_institutions_staff(potential_worker_uids,
+                                                                                                    datadir,
+                                                                                                    location,
+                                                                                                    state_location,
+                                                                                                    country_location,
+                                                                                                    ltcf_staff_age_min,
+                                                                                                    ltcf_staff_age_max,
+                                                                                                    institutions,
+                                                                                                    fac_workers_by_age_to_assign_count,
+                                                                                                    fac_potential_worker_uids_by_age,
+                                                                                                    fac_potential_worker_uids,
+                                                                                                    institutions_by_uid_lists,
+                                                                                                    age_by_uid,
+                                                                                                    use_default=use_default)
         else:
-            facilities_staff_uid_lists = []
+            institutions_staff_uid_lists = []
 
-        # JC - Synthpops method is being changed
+        # JC - Synthpops workplace assignment extension to disregard employment rates and consider industries
 
         # Generate non-school workplace sizes needed to send everyone to work
         # workplace_size_brackets = spdata.get_workplace_size_brackets(**loc_pars)
@@ -477,14 +482,46 @@ class Pop(sc.prettyobj):
         # JC - Custom Workplace creation & assignment implementation
         workplace_uid_lists = None
 
-
         # Get workplaze size distributions
         workplace_size_brackets = spdata.get_workplace_size_brackets(**loc_pars)
         workplace_size_distr_by_brackets = spdata.get_workplace_size_distr_by_brackets(**loc_pars)
 
-        # remove facilities from homes --- have already assigned each person a uid
-        homes_by_uids = homes_by_uids[len(facilities_by_uid_lists):]
-        homes = homes[len(facilities_by_uid_lists):]
+        # create CDFs for workplace size
+
+        workplace_size_distr_by_brackets_percents = [value for value in workplace_size_distr_by_brackets.values()]
+        workplace_size_distr_by_brackets_cdfs = [sum(workplace_size_distr_by_brackets_percents[:i+1])/sum(workplace_size_distr_by_brackets_percents) for i in range(len(workplace_size_distr_by_brackets_percents))]
+
+        employment_industry_male_dist, employment_industry_female_dist, employment_industry_ftpt_male_dist, employment_industry_ftpt_female_dist = spdata.read_employment_distributions(**self.loc_pars)
+
+        industries = [tuple[0] for index, tuple in enumerate(employment_industry_male_dist)] # 1 to 21
+
+        industries_workplace_age_lists, industries_workplace_uid_lists = {}, {}
+        for industry in industries:
+            ind_potential_worker_uids, ind_potential_worker_uids_by_age, ind_potential_worker_ages_left_count, ind_workers_by_age_to_assign_count = spwc.get_uids_workers_by_industry(potential_worker_uids, empind_by_uid, industry)
+
+            if len(ind_potential_worker_uids) > 0:
+                ind_workplace_sizes = spw.generate_workplace_sizes(workplace_size_distr_by_brackets, workplace_size_brackets, ind_workers_by_age_to_assign_count)
+
+                # # Assign all industry workers who are not staff at schools to workplaces
+                workplace_age_lists, workplace_uid_lists, potential_worker_uids, _, _ = spw.assign_rest_of_workers(potential_worker_uids,
+                                                                                                                    ind_workplace_sizes,
+                                                                                                                    ind_potential_worker_uids,
+                                                                                                                    ind_potential_worker_uids_by_age,
+                                                                                                                    ind_workers_by_age_to_assign_count,
+                                                                                                                    age_by_uid,
+                                                                                                                    cm_age_brackets,
+                                                                                                                    cm_age_by_brackets,
+                                                                                                                    contact_matrices)
+                
+                industries_workplace_age_lists[industry] = workplace_age_lists
+                industries_workplace_uid_lists[industry] = workplace_uid_lists
+            else:
+                industries_workplace_age_lists[industry] = []
+                industries_workplace_uid_lists[industry] = []
+
+        # remove institutions from homes --- have already assigned each person a uid
+        homes_by_uids = homes_by_uids[len(institutions_by_uid_lists):]
+        homes = homes[len(institutions_by_uid_lists):]
 
         population = spcnx.make_contacts(self,
                                          age_by_uid=age_by_uid,
@@ -492,9 +529,17 @@ class Pop(sc.prettyobj):
                                          students_by_uid_lists=student_uid_lists,
                                          teachers_by_uid_lists=teacher_uid_lists,
                                          non_teaching_staff_uid_lists=non_teaching_staff_uid_lists,
-                                         workplace_by_uid_lists=workplace_uid_lists,
-                                         facilities_by_uid_lists=facilities_by_uid_lists,
-                                         facilities_staff_uid_lists=facilities_staff_uid_lists,
+                                         industries_workplace_by_uid_lists=industries_workplace_uid_lists,
+                                         institutions=institutions,
+                                         institutions_by_uid_lists=institutions_by_uid_lists,
+                                         institutions_staff_uid_lists=institutions_staff_uid_lists,
+                                         sex_by_uid_lists=sex_by_uid,
+                                         empstatus_by_uid_lists=empstatus_by_uid,
+                                         empind_by_uid_lists=empind_by_uid,
+                                         empftpt_by_uid_lists=empftpt_by_uid,
+                                         edu_by_uid_lists=edu_by_uid,
+                                         lti_by_uid_lists=lti_by_uid,
+                                         bmi_by_uid_lists=bmi_by_uid,
                                          use_two_group_reduction=use_two_group_reduction,
                                          average_LTCF_degree=average_LTCF_degree,
                                          with_school_types=with_school_types,
@@ -517,17 +562,18 @@ class Pop(sc.prettyobj):
 
         # temporarily store some information
         self.homes_by_uids = homes_by_uids
-        self.workplace_uid_lists = workplace_uid_lists
+        self.industries_workplace_uid_lists = industries_workplace_uid_lists
         self.student_uid_lists = student_uid_lists
         self.teacher_uid_lists = teacher_uid_lists
         self.non_teaching_staff_uid_lists = non_teaching_staff_uid_lists
         self.school_types = school_types
         self.school_mixing_types = school_mixing_types
         if self.ltcf_pars.with_facilities:
-            self.facilities_by_uid_lists = facilities_by_uid_lists
-            self.facilities_staff_uid_lists = facilities_staff_uid_lists
+            self.institutions = institutions
+            self.institutions_by_uid_lists = institutions_by_uid_lists
+            self.institutions_staff_uid_lists = institutions_staff_uid_lists
 
-            sum_ltcf_res = sum([len(f) for f in self.facilities_by_uid_lists])
+            sum_ltcf_res = sum([len(f) for f in self.institutions_by_uid_lists])
             if sum_ltcf_res == 0:
                 log.warning(f"Heads up: Population size and long term care facility use rates were too low, no facilities were created for this population. If you wish to include people living in this type of layer, consider using a larger population size or checking your data on long term care facility use rates. Changing pop.with_facilities to False.")
                 self.layers.remove('LTCF')
@@ -552,11 +598,12 @@ class Pop(sc.prettyobj):
             students_filename = "students.json"
             teachers_filename = "teachers.json"
             nonteachingstaff_filename = "nonteachingstaff.json"
+            workplaces_filename = "workplaces.json"
             facilities_filename = "facilities.json"
             facilitiesstaff_filename = "facilitiesstaff.json"
 
             with open(os.path.join(newpath, agents_filename), 'w', encoding='utf-8') as f:
-                json.dump(population, f, ensure_ascii=False, indent=4, cls=NpEncoder) 
+                json.dump(population, f, ensure_ascii=False, indent=4, cls=NpEncoder)
 
             with open(os.path.join(newpath, homes_filename), 'w', encoding='utf-8') as f:
                 json.dump(homes_by_uids, f, ensure_ascii=False, indent=4, cls=NpEncoder)
@@ -565,23 +612,26 @@ class Pop(sc.prettyobj):
                 json.dump(student_uid_lists, f, ensure_ascii=False, indent=4, cls=NpEncoder)
 
             with open(os.path.join(newpath, teachers_filename), 'w', encoding='utf-8') as f:
-                json.dump(teacher_uid_lists, f, ensure_ascii=False, indent=4, cls=NpEncoder)   
+                json.dump(teacher_uid_lists, f, ensure_ascii=False, indent=4, cls=NpEncoder)
 
             with open(os.path.join(newpath, nonteachingstaff_filename), 'w', encoding='utf-8') as f:
-                json.dump(non_teaching_staff_uid_lists, f, ensure_ascii=False, indent=4, cls=NpEncoder)   
-            
+                json.dump(non_teaching_staff_uid_lists, f, ensure_ascii=False, indent=4, cls=NpEncoder)
+
+            with open(os.path.join(newpath, workplaces_filename), 'w', encoding='utf-8') as f:
+                json.dump(industries_workplace_uid_lists, f, ensure_ascii=False, indent=4, cls=NpEncoder)
+
             with open(os.path.join(newpath, facilities_filename), 'w', encoding='utf-8') as f:
-                json.dump(facilities_by_uid_lists, f, ensure_ascii=False, indent=4, cls=NpEncoder)   
+                json.dump(facilities_by_uid_lists, f, ensure_ascii=False, indent=4, cls=NpEncoder)
 
             with open(os.path.join(newpath, facilitiesstaff_filename), 'w', encoding='utf-8') as f:
-                json.dump(facilities_staff_uid_lists, f, ensure_ascii=False, indent=4, cls=NpEncoder)   
+                json.dump(facilities_staff_uid_lists, f, ensure_ascii=False, indent=4, cls=NpEncoder)
 
         return population
 
     def assign_demographics(self, age_by_uid):
         # sex
         sex_byage_distribution = spdata.read_sexbyage_distributions(**self.loc_pars)
-        
+
         sexes = None
 
         if sex_byage_distribution is None:
@@ -589,7 +639,7 @@ class Pop(sc.prettyobj):
         else:
             # Create a lookup table to map age ranges to gender percentages
             age_range_to_gender_percentages = [(min_age, max_age, male_percent, female_percent) for min_age, max_age, male_percent, female_percent in sex_byage_distribution]
-            
+
             # Pre-compute the CDFs for each age group's gender percentage
             sexes_cdfs = [np.cumsum([male_percent, female_percent]) for _, _, male_percent, female_percent in sex_byage_distribution]
 
@@ -608,11 +658,10 @@ class Pop(sc.prettyobj):
             # Pre-compute the CDFs for each age group's employment status percentage
             empstatus_female_cdfs = [np.cumsum([employed, unemployed, inactive]) for _, _, employed, unemployed, inactive in employmentstatus_byage_female_distribution]
 
-        # Employment Industry (Full Time)
+        # Employment Industry
 
         employment_industry_male_dist, employment_industry_female_dist, employment_industry_ftpt_male_dist, employment_industry_ftpt_female_dist = spdata.read_employment_distributions(**self.loc_pars)
 
-        
         if employment_industry_male_dist is not None:
             # Create CDF
             percents = [x[1] for x in employment_industry_male_dist]
@@ -761,9 +810,11 @@ class Pop(sc.prettyobj):
                     emp_industry_ftpt_cdfs = empind_female_ftpt_cdfs
 
                 random_value = np.random.random()
-                industry_index = np.searchsorted(emp_industry_cdfs, random_value, side='right')
+                industry_index = np.searchsorted(emp_industry_cdfs, random_value, side='right') # 0 based
                 industry_ftp_cdf = emp_industry_ftpt_cdfs[industry_index]
-                ftpt_index = np.searchsorted(industry_ftp_cdf, random_value, side='right')
+                ftpt_index = np.searchsorted(industry_ftp_cdf, random_value, side='right') # 0 based
+
+                industry_index += 1 # move back to 1 based
 
                 empind_by_uid[uid] = industry_index
                 empftpt_by_uid[uid] = ftpt_index
@@ -815,7 +866,7 @@ class Pop(sc.prettyobj):
             #         occupation_probs[occupation] = prob * age_range_to_occupation_percentages[age][occupation + 1] # +1 (+ 2 to skip minage, maxage since 1 starts from 3rd index, -1 since starts from 0)
 
             #     occupation_probs = {k: v / sum(occupation_probs.values() if v != 0 else 0) for k, v in occupation_probs.items()} # divide each value by the sum of all values to normalise
-                
+
             #     if not all(value == 0 for value in occupation_probs.values()):
             #         occupation = np.random.choice(list(occupation_probs.keys()), p=list(occupation_probs.values())) # choose an occupation based on the distribution
             #     else:
@@ -879,8 +930,9 @@ class Pop(sc.prettyobj):
         """Add layer classes."""
         self.initialize_households_list()
         self.populate_households(self.homes_by_uids, self.age_by_uid)
+        self.initialize_industries_list()
         self.initialize_workplaces_list()
-        self.populate_workplaces(self.workplace_uid_lists)
+        self.populate_industries_and_workplaces(self.industries_workplace_uid_lists)
 
         self.initialize_schools_list()
         self.populate_schools(self.student_uid_lists, self.teacher_uid_lists,
@@ -890,8 +942,9 @@ class Pop(sc.prettyobj):
         self.populate_all_classrooms(self.schools_in_groups)
 
         if self.ltcf_pars.with_facilities:
+            self.initialize_instutiontypes_list()
             self.initialize_ltcfs_list()
-            self.populate_ltcfs(self.facilities_by_uid_lists, self.facilities_staff_uid_lists)
+            self.populate_institutiontypes_and_institutions(self.institutions, self.institutions_by_uid_lists, self.institutions_staff_uid_lists)
         return
 
     def clean_up_layer_info(self):
@@ -1006,6 +1059,11 @@ class Pop(sc.prettyobj):
         sphh.add_household(self, household)
         return
 
+    def initialize_industries_list(self):
+        """Initialize a new industries list."""
+        self.industries = []
+        return
+
     def initialize_workplaces_list(self):
         """Initialize a new workplaces list."""
         self.workplaces = []
@@ -1021,7 +1079,7 @@ class Pop(sc.prettyobj):
         sphh.initialize_empty_workplaces(self, n_workplaces)
         return
 
-    def populate_workplaces(self, workplaces):
+    def populate_industries_and_workplaces(self, workplaces):
         """
         Populate all of the workplaces. Store each workplace at the index corresponding to it's wpid.
 
@@ -1029,7 +1087,7 @@ class Pop(sc.prettyobj):
             workplaces (list) : list of lists where each sublist represents a workplace and contains the ids of the workplace members
             age_by_uid (dict) : dictionary mapping each person's id to their age
         """
-        spw.populate_workplaces(self, workplaces)
+        spw.populate_industries_and_workplaces(self, workplaces)
         return
 
     def get_workplace(self, wpid):
@@ -1054,6 +1112,11 @@ class Pop(sc.prettyobj):
         spw.add_workplace(self, workplace)
         return
 
+    def initialize_instutiontypes_list(self):
+        """Initialize a new ltcfs list."""
+        self.institutiontypes = []
+        return
+
     def initialize_ltcfs_list(self):
         """Initialize a new ltcfs list."""
         self.ltcfs = []
@@ -1069,7 +1132,7 @@ class Pop(sc.prettyobj):
         spltcf.initialize_empty_ltcfs(self, n_ltcfs)
         return
 
-    def populate_ltcfs(self, resident_lists, staff_lists):
+    def populate_institutiontypes_and_institutions(self, institution_types, resident_lists, staff_lists):
         """
         Populate all of the ltcfs. Store each ltcf at the index corresponding to it's ltcfid.
 
@@ -1077,7 +1140,7 @@ class Pop(sc.prettyobj):
             residents_list (list) : list of lists where each sublist represents a ltcf and contains the ids of the residents
             staff_lists (list)    : list of lists where each sublist represents a ltcf and contains the ids of the staff
         """
-        spltcf.populate_ltcfs(self, resident_lists, staff_lists)
+        spltcf.populate_ltcfs(self, institution_types, resident_lists, staff_lists)
         return
 
     def get_ltcf(self, ltcfid):

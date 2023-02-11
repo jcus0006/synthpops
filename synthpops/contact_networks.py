@@ -10,16 +10,23 @@ from . import data_distributions as spdata
 from . import schools as spsch
 from .config import logger as log, checkmem
 
-
 def make_contacts(pop,
                   age_by_uid,
                   homes_by_uids,
                   students_by_uid_lists=None,
                   teachers_by_uid_lists=None,
                   non_teaching_staff_uid_lists=None,
-                  workplace_by_uid_lists=None,
-                  facilities_by_uid_lists=None,
-                  facilities_staff_uid_lists=None,
+                  industries_workplace_by_uid_lists=None,
+                  institutions=None,
+                  institutions_by_uid_lists=None,
+                  institutions_staff_uid_lists=None,
+                  sex_by_uid_lists=None,
+                  empstatus_by_uid_lists=None,
+                  empind_by_uid_lists=None,
+                  empftpt_by_uid_lists=None,
+                  edu_by_uid_lists=None,
+                  lti_by_uid_lists=None,
+                  bmi_by_uid_lists=None,
                   use_two_group_reduction=False,
                   average_LTCF_degree=20,
                   with_school_types=False,
@@ -44,6 +51,7 @@ def make_contacts(pop,
         schools_by_uids (list)                            : A list of lists, where each sublist represents a school and the ids of the students and teachers within it
         teachers_by_uids (list)                           : A list of lists, where each sublist represents a school and the ids of the teachers within it
         workplaces_by_uids (list)                         : A list of lists, where each sublist represents a workplace and the ids of the workers within it
+        institutions (dict)                               : A dictionary of lists of facilities, where each key represents a different type of institution
         facilities_by_uids (list)                         : A list of lists, where each sublist represents a skilled nursing or long term care facility and the ids of the residents living within it
         facilities_staff_uids (list)                      : A list of lists, where each sublist represents a skilled nursing or long term care facility and the ids of the staff working within it
         non_teaching_staff_uids (list)                    : None or a list of lists, where each sublist represents a school and the ids of the non teaching staff within it
@@ -132,7 +140,7 @@ def make_contacts(pop,
     trim_keys = max_contacts.keys()
 
     # Handle LTCF
-    use_ltcf = facilities_by_uid_lists is not None
+    use_ltcf = institutions_by_uid_lists is not None
     if use_ltcf:
         layer_keys = ['H', 'S', 'W', 'C', 'LTCF']
     else:
@@ -146,8 +154,11 @@ def make_contacts(pop,
         popdict[uid]['loc'] = None
         popdict[uid]['contacts'] = {}
         if use_ltcf:
-            popdict[uid]['ltcf_res'] = None
-            popdict[uid]['ltcf_staff'] = None
+            popdict[uid]['inst_res'] = None
+            popdict[uid]['inst_staff'] = None
+            popdict[uid]['inst_type'] = None
+            popdict[uid]['instid'] = None
+
         popdict[uid]['hhid'] = None
         popdict[uid]['scid'] = None
         popdict[uid]['sc_student'] = None
@@ -162,35 +173,47 @@ def make_contacts(pop,
         for k in layer_keys:
             popdict[uid]['contacts'][k] = set()
 
+        # JC
+        popdict[uid]["gender"] = sex_by_uid_lists[uid] if uid in sex_by_uid_lists else -1
+        popdict[uid]["empstatus"] = empstatus_by_uid_lists[uid] if uid in empstatus_by_uid_lists else -1
+        popdict[uid]["empind"] = empind_by_uid_lists[uid] if uid in empind_by_uid_lists else -1
+        popdict[uid]["empftpt"] = empftpt_by_uid_lists[uid] if uid in empftpt_by_uid_lists else -1
+        popdict[uid]["edu"] = edu_by_uid_lists[uid] if uid in edu_by_uid_lists else -1
+        popdict[uid]["lti"] = lti_by_uid_lists[uid] if uid in lti_by_uid_lists else -1
+        popdict[uid]["bmi"] = bmi_by_uid_lists[uid] if uid in bmi_by_uid_lists else -1
+
     # read in facility residents and staff
     if use_ltcf:
-        for nf, facility in enumerate(facilities_by_uid_lists):
-            facility_staff = facilities_staff_uid_lists[nf]
+        for inst_type, facilities in institutions.items():
+            for nf, facility_ages in enumerate(facilities):
+                facility = institutions_by_uid_lists[nf]
+                facility_staff = institutions_staff_uid_lists[nf]
 
-            for u in facility:
-                popdict[u]['ltcf_res'] = 1
-                popdict[u]['ltcfid'] = nf
+                for u in facility:
+                    popdict[u]['inst_res'] = 1
+                    popdict[u]['instid'] = nf
+                    popdict[u]['inst_type'] = inst_type
 
-            for u in facility_staff:
-                popdict[u]['ltcf_staff'] = 1
-                popdict[u]['ltcfid'] = nf
+                for u in facility_staff:
+                    popdict[u]['inst_staff'] = 1
+                    popdict[u]['instid'] = nf
+                    popdict[u]['inst_type'] = inst_type
 
-            if use_two_group_reduction:
-                popdict = create_reduced_contacts_with_group_types(popdict, facility, facility_staff, 'LTCF',
-                                                                   average_degree=average_LTCF_degree,
-                                                                   force_cross_edges=True)
+                if use_two_group_reduction:
+                    popdict = create_reduced_contacts_with_group_types(popdict, facility, facility_staff, 'LTCF',
+                                                                    average_degree=average_LTCF_degree,
+                                                                    force_cross_edges=True)
+                else:
+                    log.debug('...LTCFs ' + checkmem())
+                    for uid in facility:
+                        popdict[uid]['contacts']['LTCF'] = set(facility)
+                        popdict[uid]['contacts']['LTCF'] = popdict[uid]['contacts']['LTCF'].union(set(facility_staff))
+                        popdict[uid]['contacts']['LTCF'].remove(uid)
 
-            else:
-                log.debug('...LTCFs ' + checkmem())
-                for uid in facility:
-                    popdict[uid]['contacts']['LTCF'] = set(facility)
-                    popdict[uid]['contacts']['LTCF'] = popdict[uid]['contacts']['LTCF'].union(set(facility_staff))
-                    popdict[uid]['contacts']['LTCF'].remove(uid)
-
-                for uid in facility_staff:
-                    popdict[uid]['contacts']['LTCF'] = set(facility)
-                    popdict[uid]['contacts']['LTCF'] = popdict[uid]['contacts']['LTCF'].union(set(facility_staff))
-                    popdict[uid]['contacts']['LTCF'].remove(uid)
+                    for uid in facility_staff:
+                        popdict[uid]['contacts']['LTCF'] = set(facility)
+                        popdict[uid]['contacts']['LTCF'] = popdict[uid]['contacts']['LTCF'].union(set(facility_staff))
+                        popdict[uid]['contacts']['LTCF'].remove(uid)
 
     log.debug('...households ' + checkmem())
     for nh, household in enumerate(homes_by_uids):
@@ -269,18 +292,19 @@ def make_contacts(pop,
     if do_trim and 'W' in trim_keys:
 
         average_degree = max_contacts['W']
-        for nw, workplace in enumerate(workplace_by_uid_lists):
-            uids = np.array(workplace)
+        for industry, workplace_by_uid_lists in industries_workplace_by_uid_lists.items():
+            for nw, workplace in enumerate(workplace_by_uid_lists):
+                uids = np.array(workplace)
 
-            G = random_graph_model(uids, average_degree)  # undirected graph
-            for u, uid in enumerate(workplace):
-                v = list(G.neighbors(u))
+                G = random_graph_model(uids, average_degree)  # undirected graph
+                for u, uid in enumerate(workplace):
+                    v = list(G.neighbors(u))
 
-                popdict[uid]['contacts']['W'] = set(uids[v])
-                popdict[uid]['contacts']['W'].discard(uid)  # this shouldn't be needed
-                popdict[uid]['wpid'] = nw
-                if workplaces_by_industry_codes is not None: # pragma: no cover
-                    popdict[uid]['wpindcode'] = int(workplaces_by_industry_codes[nw])
+                    popdict[uid]['contacts']['W'] = set(uids[v])
+                    popdict[uid]['contacts']['W'].discard(uid)  # this shouldn't be needed
+                    popdict[uid]['wpid'] = nw
+                    if workplaces_by_industry_codes is not None: # pragma: no cover
+                        popdict[uid]['wpindcode'] = int(workplaces_by_industry_codes[nw])
 
     else: # pragma: no cover
         for nw, workplace in enumerate(workplace_by_uid_lists):

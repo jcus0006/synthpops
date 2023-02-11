@@ -1505,3 +1505,63 @@ def get_long_term_care_facility_use_rates(datadir=None, location=None, state_loc
 
     dist = [[int(d[0]), d[1]] for d in location_data.ltcf_use_rate_distribution]
     return dict(dist)
+
+def get_institutions_rates_by_age(datadir=None, location=None, state_location=None, country_location=None, file_path=None, use_default=False):
+    """
+    Get institutions by age rates
+
+    Args:
+        datadir (str)          : file path to the data directory
+        location_alias (str)   : more commonly known name of the location
+        state_location (str)   : name of the state the location is in
+        country_location (str) : name of the country the location is in
+        file_path (string)     : file path to user specified gender by age bracket distribution data
+        use_default (bool)     : if True, try to first use the other parameters to find data specific to the location under study, otherwise returns default data drawing from settings.location, settings.state_location, settings.country_location.
+
+    Returns:
+        dict: An array of the institutions rates by age brackets
+
+    Note:
+        Currently only available for Malta.
+    """
+    # Use default if no file for this location.
+    location_data = load_location(location, state_location, country_location, revert_to_default=use_default)
+    # Use default if no data for this parameter.
+    if use_default and (location_data.institutions_rates_by_age is None or len(location_data.institutions_rates_by_age) == 0):
+        return get_institutions_rates_by_age(location=defaults.settings.location,
+                                                     state_location=defaults.settings.state_location,
+                                                     country_location=defaults.settings.country_location,
+                                                     use_default=False)
+
+    dist = [[int(d[0]), int(d[1]), d[2]] for d in location_data.institutions_rates_by_age]
+    return dist
+
+def get_institutions_type_distribution(datadir=None, location=None, state_location=None, country_location=None, file_path=None, use_default=False):
+    """
+    Get institutions type distribution
+
+    Args:
+        datadir (str)          : file path to the data directory
+        location_alias (str)   : more commonly known name of the location
+        state_location (str)   : name of the state the location is in
+        country_location (str) : name of the country the location is in
+        file_path (string)     : file path to user specified gender by age bracket distribution data
+        use_default (bool)     : if True, try to first use the other parameters to find data specific to the location under study, otherwise returns default data drawing from settings.location, settings.state_location, settings.country_location.
+
+    Returns:
+        dict: A dictionary of the Institutions type distribution
+
+    Note:
+        Currently only available for Malta.
+    """
+    # Use default if no file for this location.
+    location_data = load_location(location, state_location, country_location, revert_to_default=use_default)
+    # Use default if no data for this parameter.
+    if use_default and (location_data.institutions_type_distribution is None or len(location_data.institutions_type_distribution) == 0):
+        return get_institutions_type_distribution(location=defaults.settings.location,
+                                                     state_location=defaults.settings.state_location,
+                                                     country_location=defaults.settings.country_location,
+                                                     use_default=False)
+
+    dist = [[int(d[0]), d[1]] for d in location_data.institutions_type_distribution]
+    return dict(dist)

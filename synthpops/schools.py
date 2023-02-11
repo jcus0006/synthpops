@@ -1341,7 +1341,7 @@ def get_school_type_data(datadir, location, state_location, country_location, us
     return school_size_distr_by_type, school_size_brackets, school_type_age_ranges
 
 
-def assign_teachers_to_schools(student_age_lists, student_uid_lists, workers_by_age_to_assign_count, potential_worker_uids, potential_worker_uids_by_age, potential_worker_ages_left_count, average_student_teacher_ratio=20, teacher_age_min=25, teacher_age_max=75):
+def assign_teachers_to_schools(all_worker_uids, student_age_lists, student_uid_lists, workers_by_age_to_assign_count, potential_worker_uids, potential_worker_uids_by_age, potential_worker_ages_left_count, average_student_teacher_ratio=20, teacher_age_min=25, teacher_age_max=75):
     """
     Assign teachers to each school according to the average student-teacher
     ratio.
@@ -1398,6 +1398,7 @@ def assign_teachers_to_schools(student_age_lists, student_uid_lists, workers_by_
             workers_by_age_to_assign_count[a] -= 1
             potential_worker_ages_left_count[a] -= 1
             potential_worker_uids.pop(uid, None)
+            all_worker_uids.pop(uid, None)
 
             teacher_ages.append(a)
             teacher_uids.append(uid)
@@ -1411,10 +1412,10 @@ def assign_teachers_to_schools(student_age_lists, student_uid_lists, workers_by_
             print(f"nkids: {(np.array(student_ages) <= 19).sum()}, n20=>: {(np.array(student_ages) > 19).sum()}")
             print(f"kid-adult ratio: {np.divide((np.array(student_ages) <= 19).sum() , (np.array(student_ages) > 19).sum())}")
 
-    return teacher_age_lists, teacher_uid_lists, potential_worker_uids, potential_worker_uids_by_age, workers_by_age_to_assign_count
+    return teacher_age_lists, teacher_uid_lists, all_worker_uids, potential_worker_uids_by_age, workers_by_age_to_assign_count
 
 
-def assign_additional_staff_to_schools(student_uid_lists, teacher_uid_lists, workers_by_age_to_assign_count, potential_worker_uids, potential_worker_uids_by_age, potential_worker_ages_left_count, average_student_teacher_ratio=20, average_student_all_staff_ratio=15, staff_age_min=20, staff_age_max=75, with_non_teaching_staff=False):
+def assign_additional_staff_to_schools(all_worker_uids, student_uid_lists, teacher_uid_lists, workers_by_age_to_assign_count, potential_worker_uids, potential_worker_uids_by_age, potential_worker_ages_left_count, average_student_teacher_ratio=20, average_student_all_staff_ratio=15, staff_age_min=20, staff_age_max=75, with_non_teaching_staff=False):
     """
     Assign additional staff to each school according to the average student to
     all staff ratio.
@@ -1486,6 +1487,7 @@ def assign_additional_staff_to_schools(student_uid_lists, teacher_uid_lists, wor
             workers_by_age_to_assign_count[a] -= 1
             potential_worker_ages_left_count[a] -= 1
             potential_worker_uids.pop(uid, None)
+            all_worker_uids.pop(uid, None)
             potential_worker_uids_by_age[a].remove(uid)
 
             non_teaching_staff_uids_in_this_school.append(uid)
@@ -1503,9 +1505,10 @@ def assign_additional_staff_to_schools(student_uid_lists, teacher_uid_lists, wor
             workers_by_age_to_assign_count[age] -= 1
             potential_worker_ages_left_count[age] -= 1
             potential_worker_uids.pop(uid, None)
+            all_worker_uids.pop(uid, None)
             potential_worker_uids_by_age[age].remove(uid)
 
-    return non_teaching_staff_uid_lists, potential_worker_uids, potential_worker_uids_by_age, workers_by_age_to_assign_count
+    return non_teaching_staff_uid_lists, all_worker_uids, potential_worker_uids_by_age, workers_by_age_to_assign_count
 
 
 def add_random_contacts_from_graph(G, average_degree):
