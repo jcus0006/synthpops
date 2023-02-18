@@ -240,7 +240,7 @@ def assign_facility_staff(datadir, location, state_location, country_location, l
     return facilities_staff_uids
 
 
-def assign_institutions_staff(all_worker_uids, datadir, location, state_location, country_location, ltcf_staff_age_min, ltcf_staff_age_max, institutions, workers_by_age_to_assign_count, potential_worker_uids_by_age, potential_worker_uids, facilities_by_uids, age_by_uid, use_default=False):
+def assign_institutions_staff(all_worker_uids, datadir, location, state_location, country_location, ltcf_staff_age_min, ltcf_staff_age_max, institutions, workers_by_age_to_assign_count, potential_worker_uids_by_age, potential_worker_uids, age_by_uid, use_default=False):
     """
     Assign Institutions staff to the generated institutions with residents.
 
@@ -266,14 +266,15 @@ def assign_institutions_staff(all_worker_uids, datadir, location, state_location
     resident_to_staff_ratio_distr = spb.norm_dic(resident_to_staff_ratio_distr)
     resident_to_staff_ratio_brackets = spdata.get_long_term_care_facility_resident_to_staff_ratios_brackets(datadir, location=location, state_location=state_location, country_location=country_location, use_default=use_default)
 
-    institutions_staff = []
-    institutions_staff_uids = []
+    institutions_staff = {}
+    institutions_staff_uids = {}
 
     sorted_ratio_keys = sorted([k for k in resident_to_staff_ratio_distr.keys()])
     ratio_array = [resident_to_staff_ratio_distr[k] for k in sorted_ratio_keys]
 
     staff_age_range = np.arange(ltcf_staff_age_min, ltcf_staff_age_max + 1)
-    for k, facilities_by_type in institutions.items():
+    for institutiontypeid, facilities_by_type in institutions.items():
+        institutions_staff_temp, institutions_staff_uids_temp = [], []
         for nf, fc in enumerate(facilities_by_type):
             n_residents = len(fc)
 
@@ -298,8 +299,11 @@ def assign_institutions_staff(all_worker_uids, datadir, location, state_location
                 new_staff.append(aindex)
                 new_staff_uids.append(uid)
 
-            institutions_staff.append(new_staff)
-            institutions_staff_uids.append(new_staff_uids)
+            institutions_staff_temp.append(new_staff)
+            institutions_staff_uids_temp.append(new_staff_uids)
+        
+        institutions_staff[int(institutiontypeid)] = institutions_staff_temp
+        institutions_staff_uids[int(institutiontypeid)] = institutions_staff_uids_temp
 
     return all_worker_uids, institutions_staff_uids
 
@@ -556,7 +560,7 @@ def initialize_empty_institutiontypes(pop, n_inst_types=None):
     else:
         pop.n_inst_types = 0
 
-    pop.instutiontypes = [InstitutionType() for nl in range(pop.n_inst_types)]
+    pop.institutiontypes = [InstitutionType() for nl in range(pop.n_inst_types)]
     return
 
 def initialize_empty_ltcfs(pop, n_ltcfs=None):
@@ -585,30 +589,45 @@ def populate_ltcfs(pop, institution_types, resident_lists, staff_lists):
         residents_list (list) : list of lists where each sublist represents a ltcf and contains the ids of the residents
         staff_lists (list)    : list of lists where each sublist represents a ltcf and contains the ids of the staff
     """
-
     log.debug("Populating industries.")
 
     initialize_empty_institutiontypes(pop, len(institution_types.keys()))
 
-    initialize_empty_ltcfs(pop, len(resident_lists))
+    num_of_institutions = sum([len(institutions) for institutions in resident_lists.values()])
+
+    initialize_empty_ltcfs(pop, num_of_institutions)
 
     institutionindex = 0
     institutiontypeindex = 0
-    # now populate instiutions
-    for institutiontype, institutions in institution_types.items():
-        institutiontype_institutions = []
 
-        # now populate institutions
-        for nl, residents in enumerate(institutions):
-            # lf = []
-            # lf.extend(residents)
-            # lf.extend(staff_lists[nl])
-            kwargs = dict(ltcfid=nl,
-                        resident_uids=residents,
-                        staff_uids=staff_lists[nl],
+    # now populate institutions
+    for institutiontypeid in institution_types.keys():
+        residents_institutionsbytype = resident_lists[institutiontypeid]
+        staff_institutionsbytype = staff_lists[institutiontypeid]
+
+        institution_ids = []
+
+        for localinstindex, res_in_institution in enumerate(residents_institutionsbytype):
+            staff_in_institution = staff_institutionsbytype[localinstindex]
+
+            kwargs = dict(ltcfid=institutionindex,
+                        instid=institutiontypeid,
+                        resident_uids=res_in_institution,
+                        staff_uids=staff_in_institution,
                         )
             ltcf = LongTermCareFacility()
             ltcf.set_layer_group(**kwargs)
             pop.ltcfs[ltcf['ltcfid']] = sc.dcp(ltcf)
+
+            institution_ids.append(institutionindex)
+
+            institutionindex += 1
+
+        inst_kwargs = dict(insttypeid=institutiontypeid, member_uids=institution_ids)
+        new_institution_type = InstitutionType()
+        new_institution_type.set_layer_group(**inst_kwargs)
+        pop.institutiontypes[institutiontypeindex] = new_institution_type
+
+        institutiontypeindex += 1
 
     return

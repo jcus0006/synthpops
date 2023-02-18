@@ -184,36 +184,43 @@ def make_contacts(pop,
 
     # read in facility residents and staff
     if use_ltcf:
-        for inst_type, facilities in institutions.items():
-            for nf, facility_ages in enumerate(facilities):
-                facility = institutions_by_uid_lists[nf]
-                facility_staff = institutions_staff_uid_lists[nf]
+        inst_res_index = 0
+        inst_staff_index = 0
+        for inst_type_id, institution_ages_in_type in institutions.items():
+            institutions_residents = institutions_by_uid_lists[inst_type_id]
+            institutions_staff = institutions_staff_uid_lists[inst_type_id]
 
-                for u in facility:
+            for institution_residents in institutions_residents:
+                for u in institution_residents:
                     popdict[u]['inst_res'] = 1
-                    popdict[u]['instid'] = nf
-                    popdict[u]['inst_type'] = inst_type
+                    popdict[u]['instid'] = inst_res_index
+                    popdict[u]['inst_type'] = inst_type_id
+                
+                inst_res_index += 1
 
-                for u in facility_staff:
+            for institution_staff in institutions_staff:
+                for u in institution_staff:
                     popdict[u]['inst_staff'] = 1
-                    popdict[u]['instid'] = nf
-                    popdict[u]['inst_type'] = inst_type
+                    popdict[u]['instid'] = inst_staff_index
+                    popdict[u]['inst_type'] = inst_type_id
 
-                if use_two_group_reduction:
-                    popdict = create_reduced_contacts_with_group_types(popdict, facility, facility_staff, 'LTCF',
-                                                                    average_degree=average_LTCF_degree,
-                                                                    force_cross_edges=True)
-                else:
-                    log.debug('...LTCFs ' + checkmem())
-                    for uid in facility:
-                        popdict[uid]['contacts']['LTCF'] = set(facility)
-                        popdict[uid]['contacts']['LTCF'] = popdict[uid]['contacts']['LTCF'].union(set(facility_staff))
-                        popdict[uid]['contacts']['LTCF'].remove(uid)
+                inst_staff_index += 1
 
-                    for uid in facility_staff:
-                        popdict[uid]['contacts']['LTCF'] = set(facility)
-                        popdict[uid]['contacts']['LTCF'] = popdict[uid]['contacts']['LTCF'].union(set(facility_staff))
-                        popdict[uid]['contacts']['LTCF'].remove(uid)
+            if use_two_group_reduction:
+                popdict = create_reduced_contacts_with_group_types(popdict, institution_residents, institution_staff, 'LTCF',
+                                                                average_degree=average_LTCF_degree,
+                                                                force_cross_edges=True)
+            else:
+                log.debug('...LTCFs ' + checkmem())
+                for uid in institution_residents:
+                    popdict[uid]['contacts']['LTCF'] = set(institution_residents)
+                    popdict[uid]['contacts']['LTCF'] = popdict[uid]['contacts']['LTCF'].union(set(institution_staff))
+                    popdict[uid]['contacts']['LTCF'].remove(uid)
+
+                for uid in institution_staff:
+                    popdict[uid]['contacts']['LTCF'] = set(institution_residents)
+                    popdict[uid]['contacts']['LTCF'] = popdict[uid]['contacts']['LTCF'].union(set(institution_staff))
+                    popdict[uid]['contacts']['LTCF'].remove(uid)
 
     log.debug('...households ' + checkmem())
     for nh, household in enumerate(homes_by_uids):

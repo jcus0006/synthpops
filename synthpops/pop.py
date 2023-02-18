@@ -339,24 +339,24 @@ class Pop(sc.prettyobj):
             homes_dic, homes = sphh.generate_all_households_infer_ages(n, n_nonltcf, hh_sizes, hha_by_size, hha_brackets, cm_age_brackets, cm_age_by_brackets, contact_matrices, ltcf_adjusted_age_dist, ages_left_to_assign)
 
         # Handle homes and institutions
-        institutions_flat = [np.array(institution) for institutions_in_type in institutions.values() for institution in institutions_in_type]
+        # institutions_flat = [np.array(institution) for institutions_in_type in institutions.values() for institution in institutions_in_type]
 
-        homes = institutions_flat + homes
-        homes_by_uids, age_by_uid = sphh.assign_uids_by_homes(homes)  # include institutions to assign ids
+        # homes = institutions_flat + homes
+        home_uid_lists, age_by_uid, institutions_uid_lists = sphh.assign_uids_by_homes(homes, institutions)  # include institutions to assign ids
         age_by_uid_arr = np.array([age_by_uid[i] for i in range(self.n)], dtype=int)
         self.age_by_uid = age_by_uid_arr
 
         # JC - Assign demographics
         sex_by_uid, empstatus_by_uid, empind_by_uid, empftpt_by_uid, edu_by_uid, lti_by_uid, bmi_by_uid = self.assign_demographics(age_by_uid)
 
-        institutions_by_uid_lists = homes_by_uids[0:len(institutions_flat)]
+        # institutions_by_uid_lists = homes_by_uids[0:len(institutions_flat)]
 
         # Generate school sizes
         school_sizes_dist_by_brackets = spdata.get_school_size_distr_by_brackets(**loc_pars)  # without school type
         school_size_brackets = spdata.get_school_size_brackets(**loc_pars)  # for right now the size distribution for all school types will use the same brackets or bins
 
         # Figure out who's going to school as a student with enrollment rates (gets called inside sp.get_uids_in_school)
-        uids_in_school, uids_in_school_by_age, ages_in_school_count = spsch.get_uids_in_school(datadir, n_nonltcf, location, state_location, country_location, age_by_uid, homes_by_uids, use_default=use_default)  # this will call in school enrollment rates
+        uids_in_school, uids_in_school_by_age, ages_in_school_count = spsch.get_uids_in_school(datadir, n_nonltcf, location, state_location, country_location, age_by_uid, home_uid_lists, use_default=use_default)  # this will call in school enrollment rates
 
         if with_school_types:
             school_size_distr_by_type = spdata.get_school_size_distr_by_type(**loc_pars)
@@ -456,11 +456,10 @@ class Pop(sc.prettyobj):
                                                                                                     fac_workers_by_age_to_assign_count,
                                                                                                     fac_potential_worker_uids_by_age,
                                                                                                     fac_potential_worker_uids,
-                                                                                                    institutions_by_uid_lists,
                                                                                                     age_by_uid,
                                                                                                     use_default=use_default)
         else:
-            institutions_staff_uid_lists = []
+            institutions_staff_uid_lists = {}
 
         # JC - Synthpops workplace assignment extension to disregard employment rates and consider industries
 
@@ -520,18 +519,18 @@ class Pop(sc.prettyobj):
                 industries_workplace_uid_lists[industry] = []
 
         # remove institutions from homes --- have already assigned each person a uid
-        homes_by_uids = homes_by_uids[len(institutions_by_uid_lists):]
-        homes = homes[len(institutions_by_uid_lists):]
+        # homes_by_uids = homes_by_uids[len(institutions_by_uid_lists):]
+        # homes = homes[len(institutions_by_uid_lists):]
 
         population = spcnx.make_contacts(self,
                                          age_by_uid=age_by_uid,
-                                         homes_by_uids=homes_by_uids,
+                                         homes_by_uids=home_uid_lists,
                                          students_by_uid_lists=student_uid_lists,
                                          teachers_by_uid_lists=teacher_uid_lists,
                                          non_teaching_staff_uid_lists=non_teaching_staff_uid_lists,
                                          industries_workplace_by_uid_lists=industries_workplace_uid_lists,
                                          institutions=institutions,
-                                         institutions_by_uid_lists=institutions_by_uid_lists,
+                                         institutions_by_uid_lists=institutions_uid_lists,
                                          institutions_staff_uid_lists=institutions_staff_uid_lists,
                                          sex_by_uid_lists=sex_by_uid,
                                          empstatus_by_uid_lists=empstatus_by_uid,
@@ -561,7 +560,7 @@ class Pop(sc.prettyobj):
         school_mixing_types = [self.schools_in_groups[ns]['school_mixing_type'] for ns in range(len(self.schools_in_groups))]
 
         # temporarily store some information
-        self.homes_by_uids = homes_by_uids
+        self.homes_by_uids = home_uid_lists
         self.industries_workplace_uid_lists = industries_workplace_uid_lists
         self.student_uid_lists = student_uid_lists
         self.teacher_uid_lists = teacher_uid_lists
@@ -570,10 +569,10 @@ class Pop(sc.prettyobj):
         self.school_mixing_types = school_mixing_types
         if self.ltcf_pars.with_facilities:
             self.institutions = institutions
-            self.institutions_by_uid_lists = institutions_by_uid_lists
+            self.institutions_by_uid_lists = institutions_uid_lists
             self.institutions_staff_uid_lists = institutions_staff_uid_lists
 
-            sum_ltcf_res = sum([len(f) for f in self.institutions_by_uid_lists])
+            sum_ltcf_res = sum([1 for institutions in self.institutions_by_uid_lists.values() for institution in institutions for res in institution])
             if sum_ltcf_res == 0:
                 log.warning(f"Heads up: Population size and long term care facility use rates were too low, no facilities were created for this population. If you wish to include people living in this type of layer, consider using a larger population size or checking your data on long term care facility use rates. Changing pop.with_facilities to False.")
                 self.layers.remove('LTCF')
@@ -594,37 +593,58 @@ class Pop(sc.prettyobj):
                 os.makedirs(newpath)
 
             agents_filename = "agents.json"
-            homes_filename = "homes.json"
-            students_filename = "students.json"
-            teachers_filename = "teachers.json"
-            nonteachingstaff_filename = "nonteachingstaff.json"
+            households_filename = "households.json"
             workplaces_filename = "workplaces.json"
-            facilities_filename = "facilities.json"
-            facilitiesstaff_filename = "facilitiesstaff.json"
+            schools_filename = "schools.json"
+            institutiontypes_filename = "institutiontypes.json"
+            institutions_filename = "institutions.json"
+
+            # homes_filename = "homes.json"
+            # students_filename = "students.json"
+            # teachers_filename = "teachers.json"
+            # nonteachingstaff_filename = "nonteachingstaff.json"
+            # workplaces_filename = "workplaces.json"
+            # facilities_filename = "facilities.json"
+            # facilitiesstaff_filename = "facilitiesstaff.json"
 
             with open(os.path.join(newpath, agents_filename), 'w', encoding='utf-8') as f:
                 json.dump(population, f, ensure_ascii=False, indent=4, cls=NpEncoder)
 
-            with open(os.path.join(newpath, homes_filename), 'w', encoding='utf-8') as f:
-                json.dump(homes_by_uids, f, ensure_ascii=False, indent=4, cls=NpEncoder)
-
-            with open(os.path.join(newpath, students_filename), 'w', encoding='utf-8') as f:
-                json.dump(student_uid_lists, f, ensure_ascii=False, indent=4, cls=NpEncoder)
-
-            with open(os.path.join(newpath, teachers_filename), 'w', encoding='utf-8') as f:
-                json.dump(teacher_uid_lists, f, ensure_ascii=False, indent=4, cls=NpEncoder)
-
-            with open(os.path.join(newpath, nonteachingstaff_filename), 'w', encoding='utf-8') as f:
-                json.dump(non_teaching_staff_uid_lists, f, ensure_ascii=False, indent=4, cls=NpEncoder)
+            with open(os.path.join(newpath, households_filename), 'w', encoding='utf-8') as f:
+                json.dump(self.households, f, ensure_ascii=False, indent=4, cls=NpEncoder)
 
             with open(os.path.join(newpath, workplaces_filename), 'w', encoding='utf-8') as f:
-                json.dump(industries_workplace_uid_lists, f, ensure_ascii=False, indent=4, cls=NpEncoder)
+                json.dump(self.workplaces, f, ensure_ascii=False, indent=4, cls=NpEncoder)
 
-            with open(os.path.join(newpath, facilities_filename), 'w', encoding='utf-8') as f:
-                json.dump(facilities_by_uid_lists, f, ensure_ascii=False, indent=4, cls=NpEncoder)
+            with open(os.path.join(newpath, schools_filename), 'w', encoding='utf-8') as f:
+                json.dump(self.schools, f, ensure_ascii=False, indent=4, cls=NpEncoder)
 
-            with open(os.path.join(newpath, facilitiesstaff_filename), 'w', encoding='utf-8') as f:
-                json.dump(facilities_staff_uid_lists, f, ensure_ascii=False, indent=4, cls=NpEncoder)
+            with open(os.path.join(newpath, institutiontypes_filename), 'w', encoding='utf-8') as f:
+                json.dump(self.institutiontypes, f, ensure_ascii=False, indent=4, cls=NpEncoder)
+
+            with open(os.path.join(newpath, institutions_filename), 'w', encoding='utf-8') as f:
+                json.dump(self.ltcfs, f, ensure_ascii=False, indent=4, cls=NpEncoder)    
+
+            # with open(os.path.join(newpath, homes_filename), 'w', encoding='utf-8') as f:
+            #     json.dump(home_uid_lists, f, ensure_ascii=False, indent=4, cls=NpEncoder)
+
+            # with open(os.path.join(newpath, students_filename), 'w', encoding='utf-8') as f:
+            #     json.dump(student_uid_lists, f, ensure_ascii=False, indent=4, cls=NpEncoder)
+
+            # with open(os.path.join(newpath, teachers_filename), 'w', encoding='utf-8') as f:
+            #     json.dump(teacher_uid_lists, f, ensure_ascii=False, indent=4, cls=NpEncoder)
+
+            # with open(os.path.join(newpath, nonteachingstaff_filename), 'w', encoding='utf-8') as f:
+            #     json.dump(non_teaching_staff_uid_lists, f, ensure_ascii=False, indent=4, cls=NpEncoder)
+
+            # with open(os.path.join(newpath, workplaces_filename), 'w', encoding='utf-8') as f:
+            #     json.dump(industries_workplace_uid_lists, f, ensure_ascii=False, indent=4, cls=NpEncoder)
+
+            # with open(os.path.join(newpath, facilities_filename), 'w', encoding='utf-8') as f:
+            #     json.dump(institutions_uid_lists, f, ensure_ascii=False, indent=4, cls=NpEncoder)
+
+            # with open(os.path.join(newpath, facilitiesstaff_filename), 'w', encoding='utf-8') as f:
+            #     json.dump(institutions_staff_uid_lists, f, ensure_ascii=False, indent=4, cls=NpEncoder)
 
         return population
 

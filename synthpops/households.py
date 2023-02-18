@@ -207,7 +207,7 @@ def generate_household_size_count_from_fixed_pop_size(N, hh_size_distr):
     return hh_sizes
 
 
-def assign_uids_by_homes(homes, institutions, id_len=16, use_int=True):
+def assign_uids_by_homes(homes, institutiontypes, id_len=16, use_int=True):
     """
     Assign IDs to everyone in order by their households.
 
@@ -223,7 +223,7 @@ def assign_uids_by_homes(homes, institutions, id_len=16, use_int=True):
 
     age_by_uid = dict()
     homes_by_uids = []
-    institutiontype_by_uids = {}
+    institutions_by_uids = {}
 
     # institutiontype_by_uids = {k: [None] * len(v) for k, v in institutions.items() }
 
@@ -231,8 +231,26 @@ def assign_uids_by_homes(homes, institutions, id_len=16, use_int=True):
 
     # num_of_institutions = sum([len(institutions) for institutions in institutions.values()])
 
-    for h, home in enumerate(homes):
-        
+    for institutiontypeid, institutions in institutiontypes.items():       
+        institutions_temp = []
+
+        for institution in institutions:
+            institution_ids = []
+
+            for a in institution:
+                if use_int:
+                    uid = len(age_by_uid)
+                else:
+                    uid = sc.uuid(length=id_len)
+
+                age_by_uid[uid] = int(a)
+                institution_ids.append(uid)
+
+            institutions_temp.append(institution_ids)
+
+        institutions_by_uids[int(institutiontypeid)] = institutions_temp
+
+    for h, home in enumerate(homes):        
         home_ids = []
         for a in home:
             if use_int:
@@ -244,12 +262,7 @@ def assign_uids_by_homes(homes, institutions, id_len=16, use_int=True):
 
         homes_by_uids.append(home_ids)
 
-        # if num_of_institutions > 0: # this is still an institution, haven't got to homes yet
-        #     if num_of_institution_types > 0:
-
-        # num_of_institutions -= 1
-
-    return homes_by_uids, age_by_uid
+    return homes_by_uids, age_by_uid, institutions_by_uids
 
 
 def generate_age_count(n, age_distr):
