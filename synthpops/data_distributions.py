@@ -662,7 +662,7 @@ def read_employment_distributions(datadir=None, location=None, state_location=No
     female_industry_groups = [(industry_range[0], industry_range[1]) for industry_range in female_industry_brackets]
     male_industry_ftpt_groups = [(industry_range[0], industry_range[1], industry_range[2], industry_range[3]) for industry_range in male_industry_ftpt_brackets]
     female_industry_ftpt_groups = [(industry_range[0], industry_range[1], industry_range[2], industry_range[3]) for industry_range in female_industry_ftpt_brackets]
-    return male_industry_groups, female_industry_groups, male_industry_ftpt_brackets, female_industry_ftpt_brackets
+    return male_industry_groups, female_industry_groups, male_industry_ftpt_groups, female_industry_ftpt_groups
 
 # TODO: need to adapt this to new data.py
 def get_smoothed_single_year_age_distr(datadir=None, location=None, state_location=None, country_location=None, nbrackets=None, file_path=None, use_default=False, window_length=7):

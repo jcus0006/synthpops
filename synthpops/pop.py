@@ -599,6 +599,10 @@ class Pop(sc.prettyobj):
             institutiontypes_filename = "institutiontypes.json"
             institutions_filename = "institutions.json"
 
+            smoothedagedist_filename = "smoothedagedist.json"
+            
+            # agents_ages_filename = "agentsages.json"
+
             # homes_filename = "homes.json"
             # students_filename = "students.json"
             # teachers_filename = "teachers.json"
@@ -624,6 +628,15 @@ class Pop(sc.prettyobj):
 
             with open(os.path.join(newpath, institutions_filename), 'w', encoding='utf-8') as f:
                 json.dump(self.ltcfs, f, ensure_ascii=False, indent=4, cls=NpEncoder)    
+
+            expected_age_dist_temp = {int(k):v for k, v in self.expected_age_dist.items()}
+
+            with open(os.path.join(newpath, smoothedagedist_filename), 'w', encoding='utf-8') as f:
+                json.dump(expected_age_dist_temp, f, ensure_ascii=False, indent=4, cls=NpEncoder)
+
+            # with open(os.path.join(newpath, agents_ages_filename), 'w', encoding='utf-8') as f:
+            #     json.dump(self.age_by_uid, f, ensure_ascii=False, indent=4, cls=NpEncoder)  
+
 
             # with open(os.path.join(newpath, homes_filename), 'w', encoding='utf-8') as f:
             #     json.dump(home_uid_lists, f, ensure_ascii=False, indent=4, cls=NpEncoder)
@@ -831,7 +844,9 @@ class Pop(sc.prettyobj):
 
                 random_value = np.random.random()
                 industry_index = np.searchsorted(emp_industry_cdfs, random_value, side='right') # 0 based
+
                 industry_ftp_cdf = emp_industry_ftpt_cdfs[industry_index]
+                random_value = np.random.random()
                 ftpt_index = np.searchsorted(industry_ftp_cdf, random_value, side='right') # 0 based
 
                 industry_index += 1 # move back to 1 based

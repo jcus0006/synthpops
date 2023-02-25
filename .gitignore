@@ -137,3 +137,5 @@ dmypy.json
 *pdf
 /figures/*.pdf
 /figures/*.png
+
+data/500kagents/agents.json

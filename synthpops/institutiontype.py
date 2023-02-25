@@ -8,7 +8,7 @@ class InstitutionType(spb.LayerGroup):
         kwargs (dict): data dictionary of the institution
     """
 
-    def __init__(self, instypeid=None, **kwargs):
+    def __init__(self, insttypeid=None, **kwargs):
         """
         Class constructor for empty institution.
 
@@ -17,7 +17,7 @@ class InstitutionType(spb.LayerGroup):
             **member_uids (np.array) : institutions in institution type
         """
         # set up default industry values
-        super().__init__(instypeid=instypeid, **kwargs)
+        super().__init__(insttypeid=insttypeid, **kwargs)
         self.validate()
 
         return

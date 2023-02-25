@@ -610,14 +610,14 @@ def populate_ltcfs(pop, institution_types, resident_lists, staff_lists):
         for localinstindex, res_in_institution in enumerate(residents_institutionsbytype):
             staff_in_institution = staff_institutionsbytype[localinstindex]
 
-            kwargs = dict(ltcfid=institutionindex,
-                        instid=institutiontypeid,
+            kwargs = dict(instid=institutionindex,
+                        insttypeid=institutiontypeid,
                         resident_uids=res_in_institution,
                         staff_uids=staff_in_institution,
                         )
             ltcf = LongTermCareFacility()
             ltcf.set_layer_group(**kwargs)
-            pop.ltcfs[ltcf['ltcfid']] = sc.dcp(ltcf)
+            pop.ltcfs[ltcf['instid']] = sc.dcp(ltcf)
 
             institution_ids.append(institutionindex)
 
