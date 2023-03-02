@@ -84,12 +84,25 @@ class SchoolSizeDistributionByType(JsonObject):
     # length should be len(location.school_size_distribution)
     size_distribution = ListProperty(DefaultProperty)
 
-
 class SchoolTypeByAge(JsonObject):
     """Class for the school type by age range."""
     school_type = StringProperty()
     # [min_age, max_age]
     age_range = ListProperty(DefaultProperty)
+
+class TourismDistributions(JsonObject):
+    total_inbound_tourists = IntegerProperty()
+    avg_inbound_tourists = DefaultProperty()
+    total_inbound_nights = IntegerProperty()
+    total_outbound_tourists = IntegerProperty()
+    avg_outbound_tourists = DefaultProperty()
+    total_outbound_nights = IntegerProperty()
+    accommodation_capacity = ListProperty(IntegerProperty)
+    gender = ListProperty(DefaultProperty)
+    age = ListProperty(DefaultProperty)
+    quarter = ListProperty(DefaultProperty)
+    duration = ListProperty(DefaultProperty)
+    accommodation_type = ListProperty(DefaultProperty)
 
 
 class Location(JsonObject):
@@ -221,6 +234,8 @@ class Location(JsonObject):
         # [num_personnel_low, num_personnel_hi, count]
         ListProperty(DefaultProperty)
     )
+
+    tourism_distributions = TourismDistributions()
 
     def get_list_properties(self):
         """
@@ -472,6 +487,23 @@ class Location(JsonObject):
         maledistftpt = matching_distributions_ftpt[0].maledistribution
         femaledistftpt = matching_distributions_ftpt[0].femaledistribution
         return maledist, femaledist, maledistftpt, femaledistftpt
+
+    def get_tourism_distributions(self):
+        """
+        Get the tourism distributions
+
+        Args:
+            nbrackets (int): the number of brackets the distribution is aggregated to
+
+        Returns:
+            TourismDistributions object
+        """
+
+        matching_distributions = self.tourism_distributions
+        if matching_distributions is None:
+            raise RuntimeError(f"The configured location data doesn't have any tourism distributions")
+
+        return matching_distributions
 
 def populate_parent_data_from_file_path(location, parent_file_path):
     """

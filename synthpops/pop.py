@@ -25,6 +25,8 @@ import os
 from .util.NpEncoder import NpEncoder
 import random
 from copy import deepcopy
+from . import tourism as trsm
+# import matplotlib.pyplot as plt
 
 __all__ = ['Pop', 'make_population', 'generate_synthetic_population']
 
@@ -43,6 +45,7 @@ class Pop(sc.prettyobj):
                  average_LTCF_degree=20,
                  ltcf_staff_age_min=20,
                  ltcf_staff_age_max=60,
+                 tourism=False,
                  with_school_types=False,
                  school_mixing_type='random',
                  average_class_size=20,
@@ -185,6 +188,8 @@ class Pop(sc.prettyobj):
         else:
             self.layers = ['H', 'S', 'W']
         self.layer_mappings = dict(H='Households', S='Schools', W='Workplaces', LTCF='Long Term Care facilities')
+
+        self.tourism = tourism
 
         self.save_to_json_file = save_to_json_file
 
@@ -345,6 +350,11 @@ class Pop(sc.prettyobj):
         home_uid_lists, age_by_uid, institutions_uid_lists = sphh.assign_uids_by_homes(homes, institutions)  # include institutions to assign ids
         age_by_uid_arr = np.array([age_by_uid[i] for i in range(self.n)], dtype=int)
         self.age_by_uid = age_by_uid_arr
+
+        if self.tourism:
+            inbound_aggregates, outbound_aggregates, accom_capacities, group_size_dist, gender_dist, age_groups_dist, quarter_dist, duration_dist, accom_type_dist, purpose_dist = spdata.read_tourism_distributions(**self.loc_pars)
+
+            accommodations = trsm.generate_tourism(inbound_aggregates, outbound_aggregates, accom_capacities, group_size_dist, gender_dist, age_groups_dist, quarter_dist, duration_dist, accom_type_dist, purpose_dist)
 
         # JC - Assign demographics
         sex_by_uid, empstatus_by_uid, empind_by_uid, empftpt_by_uid, edu_by_uid, lti_by_uid, bmi_by_uid = self.assign_demographics(age_by_uid)

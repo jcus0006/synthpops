@@ -664,6 +664,50 @@ def read_employment_distributions(datadir=None, location=None, state_location=No
     female_industry_ftpt_groups = [(industry_range[0], industry_range[1], industry_range[2], industry_range[3]) for industry_range in female_industry_ftpt_brackets]
     return male_industry_groups, female_industry_groups, male_industry_ftpt_groups, female_industry_ftpt_groups
 
+def read_tourism_distributions(datadir=None, location=None, state_location=None, country_location=None, file_path=None, use_default=False):
+    """
+    A dict of the tourim distributions. If use_default, then we'll
+    first try to look for location specific data and if that's not available
+    we'll use default data from settings.location,
+    settings.state_location, settings.country_location. This may not
+    be appropriate for the population under study so it's best to provide as
+    much data as you can for the specific population.
+
+    Args:
+        datadir (string)          : file path to the data directory
+        location (string)         : name of the location
+        state_location (string)   : name of the state the location is in
+        country_location (string) : name of the country the location is in
+        file_path (string)        : file path to user specified age bracket distribution data
+        use_default (bool)        : if True, try to first use the other parameters to find data specific to the location under study, otherwise returns default data drawing from the settings.location, settings.state_location, settings.country_location.
+
+    Returns:
+        all the different distributions extracted from the main object
+
+    """
+    # Use default if no file for this location.
+    location_data = load_location(location, state_location, country_location, revert_to_default=use_default)
+    tour_dist = location_data.get_tourism_distributions()
+    # Use default if no data for this parameter.
+    if use_default and (tour_dist is None):
+        return read_tourism_distributions(location=defaults.settings.location,
+                                            state_location=defaults.settings.state_location,
+                                            country_location=defaults.settings.country_location,
+                                            use_default=False)
+    
+    inbound_aggregates = { "total_inbound_tourists": tour_dist["total_inbound_tourists"], "avg_inbound_tourists": tour_dist["avg_inbound_tourists"], "total_inbound_night": tour_dist["total_inbound_nights"]}
+    outbound_aggregates = { "total_outbound_tourists": tour_dist["total_outbound_tourists"], "avg_outbound_tourists": tour_dist["avg_outbound_tourists"], "total_outbound_night": tour_dist["total_outbound_nights"]}
+    accommodation_capacities = tour_dist["accommodation_capacity"]
+    group_size = tour_dist["group_size"]
+    gender = tour_dist["gender"]
+    age_groups = tour_dist["age"]
+    quarter = tour_dist["quarter"]
+    duration = tour_dist["duration"]
+    accommodation_type = tour_dist["accommodation_type"]
+    purpose = tour_dist["purpose"]
+
+    return inbound_aggregates, outbound_aggregates, accommodation_capacities, group_size, gender, age_groups, quarter, duration, accommodation_type, purpose
+
 # TODO: need to adapt this to new data.py
 def get_smoothed_single_year_age_distr(datadir=None, location=None, state_location=None, country_location=None, nbrackets=None, file_path=None, use_default=False, window_length=7):
     """

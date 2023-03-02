@@ -23,10 +23,11 @@ valid_probability_distributions = [
     'bmi_byage_distributions',
     'employment_status_byage_distributions',
     'employment_byindustry_distributions',
-    'employment_byindustry_ftpt_distributions'
+    'employment_byindustry_ftpt_distributions',
     # 'ltcf_resident_to_staff_ratio_distribution',
     # 'ltcf_num_residents_distribution',
     # 'school_size_distribution',
+    # 'tourism_distributions'
 ]
 
 default_data = {

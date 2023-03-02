@@ -178,10 +178,10 @@ def get_uids_workers(empstatus_by_uid, age_by_uid):
 
 def get_uids_workers_by_industry(potential_worker_uids, empind_by_uid, ind):
     """
-    Get IDs for everyone whose status is employed
+    Get IDs for everyone who work in this industry
 
     Args:
-        empstatus_by_uid (dict) : A dictionary mapping ID to Employment status for individuals in the population.
+        empind_by_uid (dict) : A dictionary mapping ID to Industry for individuals in the population.
 
     Returns:
         A dictionary of potential workers mapping their ID to their age, a dictionary mapping age to the list of IDs for potential
