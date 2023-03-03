@@ -354,7 +354,7 @@ class Pop(sc.prettyobj):
         if self.tourism:
             inbound_aggregates, outbound_aggregates, accom_capacities, group_size_dist, gender_dist, age_groups_dist, quarter_dist, duration_dist, accom_type_dist, purpose_dist = spdata.read_tourism_distributions(**self.loc_pars)
 
-            accommodations = trsm.generate_tourism(inbound_aggregates, outbound_aggregates, accom_capacities, group_size_dist, gender_dist, age_groups_dist, quarter_dist, duration_dist, accom_type_dist, purpose_dist)
+            accommodations = trsm.generate_tourism(inbound_aggregates, outbound_aggregates, accom_capacities, group_size_dist, gender_dist, age_groups_dist, quarter_dist, duration_dist, accom_type_dist, purpose_dist, True)
 
         # JC - Assign demographics
         sex_by_uid, empstatus_by_uid, empind_by_uid, empftpt_by_uid, edu_by_uid, lti_by_uid, bmi_by_uid = self.assign_demographics(age_by_uid)
