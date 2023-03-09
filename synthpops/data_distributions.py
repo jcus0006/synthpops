@@ -705,8 +705,9 @@ def read_tourism_distributions(datadir=None, location=None, state_location=None,
     duration = tour_dist["duration"]
     accommodation_type = tour_dist["accommodation_type"]
     purpose = tour_dist["purpose"]
+    family_or_non_family_by_purpose = tour_dist["family_or_non_family_by_purpose"]
 
-    return inbound_aggregates, outbound_aggregates, accommodation_capacities, group_size, gender, age_groups, quarter, duration, accommodation_type, purpose
+    return inbound_aggregates, outbound_aggregates, accommodation_capacities, group_size, family_or_non_family_by_purpose, gender, age_groups, quarter, duration, accommodation_type, purpose
 
 # TODO: need to adapt this to new data.py
 def get_smoothed_single_year_age_distr(datadir=None, location=None, state_location=None, country_location=None, nbrackets=None, file_path=None, use_default=False, window_length=7):
