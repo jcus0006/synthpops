@@ -46,6 +46,8 @@ class Pop(sc.prettyobj):
                  ltcf_staff_age_min=20,
                  ltcf_staff_age_max=60,
                  tourism=False,
+                 beds_staff_hotel_ratio=0.83,
+                 beds_staff_non_hotel_ratio=8,
                  with_school_types=False,
                  school_mixing_type='random',
                  average_class_size=20,
@@ -190,6 +192,8 @@ class Pop(sc.prettyobj):
         self.layer_mappings = dict(H='Households', S='Schools', W='Workplaces', LTCF='Long Term Care facilities')
 
         self.tourism = tourism
+        self.beds_staff_hotel_ratio = beds_staff_hotel_ratio
+        self.beds_staff_non_hotel_ratio = beds_staff_non_hotel_ratio
 
         self.save_to_json_file = save_to_json_file
 
@@ -350,12 +354,7 @@ class Pop(sc.prettyobj):
         home_uid_lists, age_by_uid, institutions_uid_lists = sphh.assign_uids_by_homes(homes, institutions)  # include institutions to assign ids
         age_by_uid_arr = np.array([age_by_uid[i] for i in range(self.n)], dtype=int)
         self.age_by_uid = age_by_uid_arr
-
-        if self.tourism:
-            inbound_aggregates, outbound_aggregates, accom_capacities, group_size_dist, family_or_non_family_by_purpose_dist, gender_dist, age_groups_dist, quarter_dist, duration_dist, accom_type_dist, purpose_dist = spdata.read_tourism_distributions(**self.loc_pars)
-
-            accommodations = trsm.generate_tourism(inbound_aggregates, outbound_aggregates, accom_capacities, group_size_dist, family_or_non_family_by_purpose_dist, gender_dist, age_groups_dist, quarter_dist, duration_dist, accom_type_dist, purpose_dist, True)
-
+            
         # JC - Assign demographics
         sex_by_uid, empstatus_by_uid, empind_by_uid, empftpt_by_uid, edu_by_uid, lti_by_uid, bmi_by_uid = self.assign_demographics(age_by_uid)
 
@@ -425,7 +424,7 @@ class Pop(sc.prettyobj):
 
         # Assign teachers and update school lists
         # JC - To remove employment_rates (already not used). To pass list of education workers (ind=16). Retain age dependencies if used for assignment purposes. Every teacher assigned to be removed from list.
-        teacher_age_lists, teacher_uid_lists, potential_worker_uids, potential_worker_uids_by_age, workers_by_age_to_assign_count = spsch.assign_teachers_to_schools(potential_worker_uids,
+        teacher_age_lists, teacher_uid_lists, potential_worker_uids, edu_potential_worker_uids_by_age, edu_workers_by_age_to_assign_count = spsch.assign_teachers_to_schools(potential_worker_uids,
                                                                                                                                                                      student_age_lists,
                                                                                                                                                                      student_uid_lists,
                                                                                                                                                                      edu_workers_by_age_to_assign_count,
@@ -437,7 +436,7 @@ class Pop(sc.prettyobj):
                                                                                                                                                                      teacher_age_max=teacher_age_max)
         # Assign non teaching staff and update who's available to work at other places
         # JC - To pass remaining education workers. Retain age dependency if used for assignment purposes. Every staff person assigned to be removed from list. Remaining agents after this step to be assigned later with normal method.
-        non_teaching_staff_uid_lists, potential_worker_uids, potential_worker_uids_by_age, workers_by_age_to_assign_count = spsch.assign_additional_staff_to_schools(potential_worker_uids,
+        non_teaching_staff_uid_lists, potential_worker_uids, edu_potential_worker_uids_by_age, edu_workers_by_age_to_assign_count = spsch.assign_additional_staff_to_schools(potential_worker_uids,
                                                                                                                                                                      student_uid_lists,
                                                                                                                                                                      teacher_uid_lists,
                                                                                                                                                                      edu_workers_by_age_to_assign_count,
@@ -471,6 +470,16 @@ class Pop(sc.prettyobj):
         else:
             institutions_staff_uid_lists = {}
 
+        if self.tourism:
+            inbound_aggregates, outbound_aggregates, accom_capacities, group_size_dist, family_or_non_family_by_purpose_dist, gender_dist, age_groups_dist, quarter_dist, duration_dist, accom_type_dist, purpose_dist = spdata.read_tourism_distributions(**self.loc_pars)
+
+            accommodations_ids_by_type, tourist_groups = trsm.generate_tourism(inbound_aggregates, outbound_aggregates, accom_capacities, group_size_dist, family_or_non_family_by_purpose_dist, gender_dist, age_groups_dist, quarter_dist, duration_dist, accom_type_dist, purpose_dist, 2021, True)
+
+            # although not being assigned based on ages, may still need to pass potential_worker_uids_by_age to update it. but must check whether it is being updated and passed back to the main method in previous cases
+            acc_potential_worker_uids, acc_potential_worker_uids_by_age, _, acc_workers_by_age_to_assign_count = spwc.get_uids_workers_by_industry(potential_worker_uids, empind_by_uid, None, [9,14,19])
+
+            potential_worker_uids, accommodations_staff_uids = spwc.assign_accommodations_staff(potential_worker_uids, self.beds_staff_hotel_ratio, self.beds_staff_non_hotel_ratio, accommodations_ids_by_type, acc_potential_worker_uids)
+        
         # JC - Synthpops workplace assignment extension to disregard employment rates and consider industries
 
         # Generate non-school workplace sizes needed to send everyone to work

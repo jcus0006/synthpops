@@ -176,7 +176,7 @@ def get_uids_workers(empstatus_by_uid, age_by_uid):
     
     return potential_worker_uids, potential_worker_uids_by_age, potential_worker_ages_left_count
 
-def get_uids_workers_by_industry(potential_worker_uids, empind_by_uid, ind):
+def get_uids_workers_by_industry(potential_worker_uids, empind_by_uid, ind, ind_arr=None):
     """
     Get IDs for everyone who work in this industry
 
@@ -192,7 +192,11 @@ def get_uids_workers_by_industry(potential_worker_uids, empind_by_uid, ind):
     industry_potential_worker_uids_by_age = {}
     industry_potential_worker_ages_left_count = {}
 
-    industry_potential_worker_uids = {k:v for k, v in potential_worker_uids.items() if k in empind_by_uid and empind_by_uid[k] == ind}
+    if ind_arr is None:
+        industry_potential_worker_uids = {k:v for k, v in potential_worker_uids.items() if k in empind_by_uid and empind_by_uid[k] == ind}
+    else:
+        industry_potential_worker_uids = {k:v for k, v in potential_worker_uids.items() if k in empind_by_uid and empind_by_uid[k] in ind_arr}
+
     industry_potential_worker_uids_ages = sorted(set(industry_potential_worker_uids.values()))
     industry_workers_by_age_to_assign_count = {age: sum(1 for x in industry_potential_worker_uids.values() if x == age) for age in industry_potential_worker_uids_ages}
     # potential_worker_ages_left_count = deepcopy(potential_worker_uids)
@@ -268,6 +272,61 @@ def get_workers_by_age_to_assign(employment_rates, potential_worker_ages_left_co
 
     return workers_by_age_to_assign_count
 
+def assign_accommodations_staff(all_worker_uids, beds_staff_hotel_ratio, beds_staff_non_hotel_ratio, accommodations_ids_by_type, potential_worker_uids):
+    """
+    Assign accommodations staff to the generated accommodations
+
+    Args:
+        datadir (string)                      : The file path to the data directory.
+        location                              : name of the location
+        state_location (string)               : name of the state the location is in
+        country_location (string)             : name of the country the location is in
+        ltcf_staff_age_min (int)              : Long term care facility staff minimum age.
+        ltcf_staff_age_max (int)              : Long term care facility staff maximum age.
+        facilities (list)                     : A list of lists where each sublist is a facility with the resident ages
+        workers_by_age_to_assign_count (dict) : A dictionary mapping age to the count of employed individuals of that age.
+        potential_worker_uids (dict)          : dictionary of potential workers mapping their id to their age
+        facilities (list)                     : A list of lists where each sublist is a facility with the resident IDs
+        age_by_uid (dict)                     : dictionary mapping id to age for all individuals in the population
+        use_default (bool)                    : If True, try to first use the other parameters to find data specific to the location under study; otherwise, return default data drawing from default_location, default_state, default_country.
+
+    Returns:
+        list: A list of lists with the accom staff IDs for each accommodation.
+    """
+    log.debug('assign_accommodations_staff()')
+
+    accommodations_staff_uids = {}
+
+    for accomtypeid, accoms_by_type in accommodations_ids_by_type.items():
+        accoms_staff_uids_temp = {}
+        for accid, acc in accoms_by_type.items():
+            n_beds = sum(acc.values()) 
+
+            beds_staff_ratio = 0
+            if accomtypeid == 1 or accomtypeid == 2: #hotel or guesthouse
+                beds_staff_ratio = beds_staff_hotel_ratio
+            else:
+                beds_staff_ratio = beds_staff_non_hotel_ratio
+
+            n_staff = int(np.ceil(n_beds / beds_staff_ratio))
+
+            new_staff_uids = []
+
+            potential_worker_uids_np = np.array(list(potential_worker_uids.keys()))
+
+            np.random.shuffle(potential_worker_uids_np)
+
+            new_staff_uids = np.random.choice(potential_worker_uids_np, size=n_staff)
+
+            for uid in new_staff_uids: # might also need to handle the maintaining of the ages
+                potential_worker_uids.pop(uid, None)
+                all_worker_uids.pop(uid, None)
+
+            accoms_staff_uids_temp[accid] = new_staff_uids
+        
+        accommodations_staff_uids[int(accomtypeid)] = accoms_staff_uids_temp
+
+    return all_worker_uids, accommodations_staff_uids
 
 def assign_rest_of_workers(workplace_sizes, potential_worker_uids, potential_worker_uids_by_age, workers_by_age_to_assign_count, age_by_uid, age_brackets, age_by_brackets, contact_matrices):
     """
