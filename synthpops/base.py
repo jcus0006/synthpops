@@ -61,6 +61,12 @@ class LayerGroup(dict):
                 except:
                     errmsg = f"Could not convert key {key} to an np.array() with type int. This key only takes arrays with int values."
                     raise TypeError(errmsg)
+            elif key in ['subgroupsmemberids', 'accominfo']:
+                try:
+                    self[key] = sc.promotetolist(self[key])
+                except:
+                    errmsg = f"Could not convert key {key} to a list."
+                    raise TypeError(errmsg)
             else:
                 if not isinstance(self[key], (int, np.int32, np.int64)):
                     if self[key] is not None:

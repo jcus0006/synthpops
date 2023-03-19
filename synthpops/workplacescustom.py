@@ -6,6 +6,7 @@ from . import base as spb
 from . import sampling as spsamp
 from .config import logger as log
 from . import defaults
+import math
 
 
 __all__ = ['count_employment_by_age', 'get_workplace_sizes',
@@ -291,36 +292,53 @@ def assign_accommodations_staff(all_worker_uids, beds_staff_hotel_ratio, beds_st
         use_default (bool)                    : If True, try to first use the other parameters to find data specific to the location under study; otherwise, return default data drawing from default_location, default_state, default_country.
 
     Returns:
-        list: A list of lists with the accom staff IDs for each accommodation.
+        dict: A dict of dict, first dict key is accom type, and values are accoms in each accom type
+        second dict key is accomid, and value is a list representing the accom staff IDs for that accom
     """
     log.debug('assign_accommodations_staff()')
 
     accommodations_staff_uids = {}
 
+    total_no_of_accoms = sum([len(accoms_by_type.keys()) for _, accoms_by_type in accommodations_ids_by_type.items()])
+
+    total_no_of_rooms = sum([len(acc.keys()) for _, accoms_by_type in accommodations_ids_by_type.items() for accid, acc in accoms_by_type.items()])
+
+    total_no_of_employees = round(len(potential_worker_uids) * 0.6) # assuming 60% accoms and 40% restaurants
+
+    total_no_of_employees_per_room = total_no_of_employees / total_no_of_rooms
+
     for accomtypeid, accoms_by_type in accommodations_ids_by_type.items():
         accoms_staff_uids_temp = {}
         for accid, acc in accoms_by_type.items():
-            n_beds = sum(acc.values()) 
+            n_rooms = len(acc.keys())
+            n_staff = math.ceil(n_rooms * total_no_of_employees_per_room) # assume at least 1
 
-            beds_staff_ratio = 0
-            if accomtypeid == 1 or accomtypeid == 2: #hotel or guesthouse
-                beds_staff_ratio = beds_staff_hotel_ratio
-            else:
-                beds_staff_ratio = beds_staff_non_hotel_ratio
+            # if n_staff == 0: # ensure at least 1
+            #     n_staff = 1
 
-            n_staff = int(np.ceil(n_beds / beds_staff_ratio))
+            # n_beds = sum(acc.values()) 
+
+            # beds_staff_ratio = 0
+            # if accomtypeid == 1 or accomtypeid == 2: #hotel or guesthouse
+            #     beds_staff_ratio = beds_staff_hotel_ratio
+            # else:
+            #     beds_staff_ratio = beds_staff_non_hotel_ratio
+
+            # n_staff = math.ceil(n_beds / beds_staff_ratio)
 
             new_staff_uids = []
 
-            potential_worker_uids_np = np.array(list(potential_worker_uids.keys()))
+            if n_staff > 0:
+                potential_worker_uids_np = np.array(list(potential_worker_uids.keys()))
 
-            np.random.shuffle(potential_worker_uids_np)
+                if len(potential_worker_uids_np) == 0:
+                    print("problemos")
 
-            new_staff_uids = np.random.choice(potential_worker_uids_np, size=n_staff)
+                new_staff_uids = np.random.choice(potential_worker_uids_np, size=n_staff)
 
-            for uid in new_staff_uids: # might also need to handle the maintaining of the ages
-                potential_worker_uids.pop(uid, None)
-                all_worker_uids.pop(uid, None)
+                for uid in new_staff_uids: # might also need to handle the maintaining of the ages
+                    potential_worker_uids.pop(uid, None)
+                    all_worker_uids.pop(uid, None)
 
             accoms_staff_uids_temp[accid] = new_staff_uids
         

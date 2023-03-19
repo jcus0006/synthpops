@@ -1,0 +1,113 @@
+[
+    {
+        "member_uids": [
+            755,
+            679,
+            502,
+            748,
+            653,
+            779,
+            392,
+            552,
+            392,
+            993,
+            748,
+            650,
+            748,
+            299,
+            911,
+            1,
+            502,
+            946,
+            650
+        ],
+        "accomid": 0,
+        "accomtypeid": 1
+    },
+    {
+        "member_uids": [
+            201,
+            35,
+            726
+        ],
+        "accomid": 1,
+        "accomtypeid": 2
+    },
+    {
+        "member_uids": [
+            442
+        ],
+        "accomid": 2,
+        "accomtypeid": 3
+    },
+    {
+        "member_uids": [
+            648
+        ],
+        "accomid": 3,
+        "accomtypeid": 4
+    },
+    {
+        "member_uids": [
+            369
+        ],
+        "accomid": 4,
+        "accomtypeid": 4
+    },
+    {
+        "member_uids": [
+            602
+        ],
+        "accomid": 5,
+        "accomtypeid": 4
+    },
+    {
+        "member_uids": [
+            922
+        ],
+        "accomid": 6,
+        "accomtypeid": 4
+    },
+    {
+        "member_uids": [
+            785
+        ],
+        "accomid": 7,
+        "accomtypeid": 4
+    },
+    {
+        "member_uids": [
+            712
+        ],
+        "accomid": 8,
+        "accomtypeid": 4
+    },
+    {
+        "member_uids": [
+            167
+        ],
+        "accomid": 9,
+        "accomtypeid": 4
+    },
+    {
+        "member_uids": [
+            633
+        ],
+        "accomid": 10,
+        "accomtypeid": 4
+    },
+    {
+        "member_uids": [
+            781
+        ],
+        "accomid": 11,
+        "accomtypeid": 4
+    },
+    {
+        "member_uids": [
+            639
+        ],
+        "accomid": 12,
+        "accomtypeid": 4
+    }
+]

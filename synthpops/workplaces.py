@@ -7,6 +7,7 @@ from . import sampling as spsamp
 from .config import logger as log
 from . import defaults
 from .industry import Industry
+from .accommodations import Accommodation
 
 
 __all__ = ['count_employment_by_age', 'get_workplace_sizes',
@@ -24,16 +25,17 @@ class Workplace(spb.LayerGroup):
         kwargs (dict): data dictionary of the workplace
     """
 
-    def __init__(self, wpid=None, indid=None, **kwargs):
+    def __init__(self, wpid=None, indid=None, accomid=None, **kwargs):
         """
         Class constructor for empty workplace.
 
         Args:
             **wpid (int)             : workplace id
+            **accomid (int)          : accom id
             **member_uids (np.array) : ids of workplace members
         """
         # set up default workplace values
-        super().__init__(wpid=wpid, indid=indid, **kwargs)
+        super().__init__(wpid=wpid, indid=indid, accomid=accomid, **kwargs)
         self.validate()
 
         return
@@ -118,8 +120,23 @@ def initialize_empty_workplaces(pop, n_workplaces=None):
     pop.workplaces = [Workplace() for nw in range(pop.n_workplaces)]
     return
 
+def initialize_empty_accommodations(pop, n_accommodations=None):
+    """
+    Array of empty workplaces.
 
-def populate_industries_and_workplaces(pop, industry_workplaces):
+    Args:
+        pop (sp.Pop)       : population
+        n_accommodations (int) : the number of accommodations to initialize
+    """
+    if n_accommodations is not None and isinstance(n_accommodations, int):
+        pop.n_accommodations = n_accommodations
+    else:
+        pop.n_accommodations = 0
+
+    pop.accommodations = [Accommodation() for aw in range(pop.n_accommodations)]
+    return
+
+def populate_industries_and_workplaces(pop, industry_workplaces, accommodations_by_type):
     """
     Populate all of the workplaces. Store each workplace at the index corresponding to it's wpid.
 
@@ -134,18 +151,50 @@ def populate_industries_and_workplaces(pop, industry_workplaces):
 
     log.debug("Populating workplaces.")
 
+    accoms_len = 0
+
+    if len(accommodations_by_type) > 0:
+        accoms_len = sum([len(accoms_by_type.keys()) for _, accoms_by_type in accommodations_by_type.items()])
+
+        initialize_empty_accommodations(pop, accoms_len)
+
     initialize_empty_industries(pop, len(industry_workplaces.keys()))
 
     workplaces_len = sum([len(workplaces) for workplaces in industry_workplaces.values()])
-    initialize_empty_workplaces(pop, workplaces_len)
+    initialize_empty_workplaces(pop, workplaces_len + accoms_len)
 
     workplaceindex = 0
     industryindex = 0
     # now populate workplaces
     for industry, workplaces in industry_workplaces.items():
         # make sure there are enough workplaces
-
         ind_workplaces = []
+
+        if industry == 14: # first create accoms to then be able to link them to workplaces
+            accom_index = 0
+            for accomtypeid, accoms in accommodations_by_type.items():
+                for accomid, workers in accoms.items():
+                    kwargs = dict(accomid=accom_index,
+                                    accomtypeid=accomtypeid,
+                                    member_uids=workers,
+                                )
+                    
+                    accommodation = Accommodation()
+                    accommodation.set_layer_group(**kwargs)
+                    pop.accommodations[accom_index] = sc.dcp(accommodation)
+                    accom_index += 1
+
+                    kwargs = dict(wpid=workplaceindex,
+                            indid=industry,
+                            accomid=accom_index,
+                            member_uids=workers,
+                        )
+                    workplace = Workplace()
+                    workplace.set_layer_group(**kwargs)
+                    ind_workplaces.append(workplaceindex)
+                    pop.workplaces[workplace['wpid']] = sc.dcp(workplace)
+                    workplaceindex += 1
+
         for nw, wp in enumerate(workplaces):
             kwargs = dict(wpid=workplaceindex,
                             indid=industry,
@@ -165,7 +214,6 @@ def populate_industries_and_workplaces(pop, industry_workplaces):
         industryindex += 1
         
     return
-
 
 def get_uids_potential_workers(student_uid_lists, employment_rates, age_by_uid):
     """

@@ -8,23 +8,29 @@ import math
 import time
 from calendar import monthrange
 import copy
+from .config import logger as log
+from . import base as spb
+import sciris as sc
 
 def generate_tourism(inbound_aggregates, outbound_aggregates, accom_capacities, group_size_dist, family_or_non_family_by_purpose_dist, gender_dist, age_groups_dist, quarter_dist, duration_dist, accom_type_dist, purpose_dist, year=2021, visualise = False):
     total_inbound_tourists = inbound_aggregates["total_inbound_tourists"]
+    actual_total_inbound_tourists = total_inbound_tourists
     print("generating synthetic tourism population of " + str(total_inbound_tourists) + " tourists")
 
     visualise = False
-    total_inbound_tourists = 10000
+    total_inbound_tourists = 2000
 
-    if total_inbound_tourists == 10000:
+    if total_inbound_tourists == 2000:
+        total_to_actual_ratio = total_inbound_tourists / actual_total_inbound_tourists
+
         for i in range(4):
-            accom_capacities[i][1] = math.ceil(accom_capacities[i][1] / 5)
-            accom_capacities[i][2] = math.ceil(accom_capacities[i][2] / 5)
-            accom_capacities[i][3] = math.ceil(accom_capacities[i][3] / 5)
-            accom_capacities[i][4] = math.ceil(accom_capacities[i][4] / 2)
+            accom_capacities[i][1] = math.ceil(accom_capacities[i][1] * total_to_actual_ratio) # 5
+            accom_capacities[i][2] = math.ceil(accom_capacities[i][2] * total_to_actual_ratio) # 5
+            accom_capacities[i][3] = math.ceil(accom_capacities[i][3] * total_to_actual_ratio) # 5
+            accom_capacities[i][4] = math.ceil(accom_capacities[i][4] * total_to_actual_ratio) # 2
 
     start = time.time()
-    accommodations_ids_by_type, accommodations_occupancy_by_days, available_room_sizes_by_days = generate_accommodation(accom_capacities, visualise)
+    accommodations_ids_by_type, accommodations_occupancy_by_days, available_room_sizes_by_days, accoms_types_room_sizes_min_max = generate_accommodation(accom_capacities, visualise)
     print("generate_accommodation: " + str(time.time() - start))
 
     start = time.time()
@@ -36,16 +42,17 @@ def generate_tourism(inbound_aggregates, outbound_aggregates, accom_capacities, 
     print("generate_group_sizes: " + str(time.time() - start))
 
     start = time.time()
-    groups = generate_matching_tourists_groups(tourists, matching_tourists_ids, matching_tourists_ages, group_sizes, quarter_dist, duration_dist, family_or_non_family_by_purpose_dist, accom_capacities, accommodations_ids_by_type, accommodations_occupancy_by_days, available_room_sizes_by_days, year=year)
+    
+    tourists_groups, tourists, tourists_groups_by_days = generate_matching_tourists_groups(tourists, matching_tourists_ids, matching_tourists_ages, group_sizes, quarter_dist, duration_dist, family_or_non_family_by_purpose_dist, accom_capacities, accommodations_ids_by_type, accommodations_occupancy_by_days, available_room_sizes_by_days, accoms_types_room_sizes_min_max, year=year)
     # groups = generate_tourist_groups(tourists, group_sizes, family_or_non_family_by_purpose_dist, use_pandas=False)
     print("generate_tourist_groups: " + str(time.time() - start))
 
-    return accommodations_ids_by_type, groups
+    return tourists, tourists_groups, tourists_groups_by_days, accommodations_ids_by_type
     # return accommodations
 
 def generate_accommodation(accom_capacities, visualise = False):
-    accomodations_ids_by_type, accommodations_occupancy_by_ids_by_type, available_room_sizes_by_type, accommodations_occupancy_by_days, available_room_sizes_by_days = {}, {}, {}, {}, {}
-
+    accomodations_ids_by_type, accommodations_occupancy_by_ids_by_type, available_room_sizes_by_type, accommodations_occupancy_by_days, available_room_sizes_by_days, accoms_types_room_sizes_min_max = {}, {}, {}, {}, {}, {}
+    
     for index, accom in enumerate(accom_capacities): # 1: hotel, 2: hostel/guest house, 3: tourist village, 4: rental accommodation
         # accommodation type
         accom_type = accom[0]
@@ -137,34 +144,62 @@ def generate_accommodation(accom_capacities, visualise = False):
         accom_beds = {i: bed_counts[i] for i in range(total_units)}
 
         accom_rooms_by_id, occupancy_rooms_by_id, available_room_sizes = {}, {}, {}
+
+        accom_type_min = 0
+        accom_type_max = 0
         
         for accom_id, bed_count in accom_beds.items():
             accom_rooms = {}
             accom_rooms_occupancy = {}
             room_id = 0
+            min_sample_size = 0
+            max_sample_size = 0
             while bed_count > 0:
                 sampled_room_size = sample_gamma_reject_out_of_range(0.5, min_room_size, max_room_size, 1, True, True)
 
                 if bed_count - sampled_room_size < 0:
                     sampled_room_size = bed_count
 
+                if min_sample_size == 0 and max_sample_size == 0:
+                    min_sample_size = sampled_room_size
+                    max_sample_size = sampled_room_size
+                else:
+                    if sampled_room_size > max_sample_size:
+                        max_sample_size = sampled_room_size
+
+                    if sampled_room_size < min_sample_size:
+                        min_sample_size = sampled_room_size
+
+                if accom_type_min == 0 and accom_type_max == 0:
+                    accom_type_min = min_sample_size
+                    accom_type_max = max_sample_size
+                else:
+                    if max_sample_size > accom_type_max:
+                        accom_type_max = max_sample_size
+
+                    if min_sample_size < accom_type_min:
+                        accom_type_min = min_sample_size         
+
                 accom_rooms[room_id] = sampled_room_size
                 accom_rooms_occupancy[room_id] = (sampled_room_size, -1, -1) # room_size, group_id, sub_group_id
 
                 bed_count -= sampled_room_size
 
-                if sampled_room_size not in available_room_sizes:
-                    available_room_sizes[sampled_room_size] = []
-
-                if accom_id not in available_room_sizes[sampled_room_size]:
-                    available_room_sizes[sampled_room_size].append(accom_id)
-
                 room_id += 1
+
+            for i in range(1, max_sample_size+1): # mark room size as available, if exact or larger match is found (assignment will prefer exact room sizes, but if 1 is not found, larger room sizes are considered)
+                if i not in available_room_sizes:
+                    available_room_sizes[i] = []
+            
+                if i >= min_sample_size:
+                    if accom_id not in available_room_sizes[i]:
+                        available_room_sizes[i].append(accom_id)
 
             accom_rooms_by_id[accom_id] = OrderedDict(sorted(accom_rooms.items(), key=lambda kv: kv[1]))
 
             occupancy_rooms_by_id[accom_id] = {k: v for k, v in sorted(accom_rooms_occupancy.items(), key=lambda item: item[1][0])} # sort by room_size (required for sequential access later)
 
+        accoms_types_room_sizes_min_max[accom_type] = (accom_type_min, accom_type_max)
         accomodations_ids_by_type[accom_type] = accom_rooms_by_id
         accommodations_occupancy_by_ids_by_type[accom_type] = occupancy_rooms_by_id
         available_room_sizes_by_type[accom_type] = available_room_sizes
@@ -174,9 +209,9 @@ def generate_accommodation(accom_capacities, visualise = False):
         start = time.time()
         accommodations_occupancy_by_days[day] = copy.deepcopy(accommodations_occupancy_by_ids_by_type)
         available_room_sizes_by_days[day] = copy.deepcopy(available_room_sizes_by_type)
-        print("available room sizes by day (deep copy): Day " + str(day) + " - " + str(time.time() - start))
+        # print("available room sizes by day (deep copy): Day " + str(day) + " - " + str(time.time() - start))
 
-    return accomodations_ids_by_type, accommodations_occupancy_by_days, available_room_sizes_by_days
+    return accomodations_ids_by_type, accommodations_occupancy_by_days, available_room_sizes_by_days, accoms_types_room_sizes_min_max
 
 def generate_inbound_tourists(num_inbound_tourists, gender_dist, age_groups_dist, quarter_dist, duration_dist, purpose_dist, accom_type_dist, min_ref_person_age = 16, visualise = False):
     tourists, matching_tourists_ids, matching_tourists_ages = {}, {}, {}
@@ -231,7 +266,7 @@ def generate_inbound_tourists(num_inbound_tourists, gender_dist, age_groups_dist
 
         accom_type = np.random.choice(accom_type_options, size=1, p=accom_type_flat_dist)[0]
 
-        tourists[i] = { "age": age, "gender": gender, "quarter": quarter_range, "duration": duration_range, "purpose": purpose, "accom_type": accom_type}
+        tourists[i] = { "age": age, "gender": gender, "quarter": quarter_range, "duration": duration_range, "purpose": purpose, "accom_type": accom_type, "group_id": -1, "sub_group_id": -1}
         # tourists_uids.append(i)
         # tourists_ages_by_uid.append(age)
 
@@ -309,7 +344,7 @@ def generate_group_sizes(group_size_dist, num_inbound_tourists, visualise=False)
     if sum(group_sizes) > num_inbound_tourists:
         extra = sum(group_sizes) - num_inbound_tourists
 
-        group_sizes_indices = [index for index, _ in enumerate(group_sizes)]
+        group_sizes_indices = [index for index, size in enumerate(group_sizes) if size > 1]
 
         random_group_size_indices = np.random.choice(group_sizes_indices, size=extra, replace=False)
 
@@ -334,248 +369,7 @@ def generate_group_sizes(group_size_dist, num_inbound_tourists, visualise=False)
 
     #     for size in range(min_size, max_size):
 
-
-def generate_tourist_groups(tourists, group_sizes, family_or_non_family_by_purpose_dist, fam_exp_rate=0.1, non_fam_relative_exp_rate=0.1, use_pandas=False):
-    groups = [None] * len(group_sizes)
-
-    if not use_pandas:
-        remaining_tourists = tourists.copy()
-    else:
-        remaining_tourists_df = pd.DataFrame.from_dict(tourists, orient='index')
-
-    fam_age_size_range = np.arange(101) # size range e.g. range(0, 100 + 1)
-    fam_age_weights = np.exp(-fam_exp_rate * fam_age_size_range)
-    fam_age_weights /= np.sum(fam_age_weights) # normalize the weights so they sum to 1
-
-    remaining_tourists_non_kids_ids = np.array([id for id, tourist in tourists.items() if tourist["age"] >= 16])
-    remaining_tourists_non_kids_indices = np.array([index for index, _ in enumerate(remaining_tourists_non_kids_ids)])
-    groups_with_missing_tourists = {}
-
-    # num_of_single_groups = sum([1 for group_size in group_sizes if group_size == 1])
-
-    reference_tourists_indices = np.random.choice(remaining_tourists_non_kids_indices, size=len(group_sizes), replace=False)
-
-    reference_tourists_ids = [remaining_tourists_non_kids_ids[index] for index in reference_tourists_indices]
-
-    for index, id in enumerate(reference_tourists_ids):
-        groups[index] = [id]
-
-        if not use_pandas:
-            del remaining_tourists[id]
-
-    # in this case the indices will be intact, and may simply delete as is
-    if use_pandas:
-        remaining_tourists_df = remaining_tourists_df.drop(index=reference_tourists_ids)
-    
-    # remaining_tourists_non_kids_ids = np.delete(remaining_tourists_non_kids_ids, reference_tourists_indices)
-    # remaining_tourists_non_kids_indices = np.delete(remaining_tourists_non_kids_indices, reference_tourists_indices)
-
-    # non_single_group_sizes = group_sizes[num_of_single_groups+1:]
-
-    # non_single_group_sizes_reversed = non_single_group_sizes[::-1]
-
-    group_sizes = sorted(group_sizes, reverse=True)
-
-    time_sum = 0
-    iter_count = 0
-    for group_index, group_size in enumerate(group_sizes):
-        if group_size > 1:
-            iter_start = time.time()
-
-            # group_index = num_of_single_groups + (len(non_single_group_sizes) - reversed_group_index)
-
-            # start = time.time()
-            # # sample an index value, here: index does not necessarily represent position
-            # temp_reference_tourist_index = np.random.choice(remaining_tourists_non_kids_indices, size=1)[0]
-            # print("picking reference tourist index: " + str(time.time() - start))
-
-            # start = time.time()
-            # # find the actual index position by the index value, that will match in remaining_tourists_non_kids_ids
-            # reference_tourist_index = np.where(np.in1d(remaining_tourists_non_kids_indices , [temp_reference_tourist_index]))[0][0]
-            # print("finding ref tourist index: " + str(time.time() - start))
-
-            # start = time.time()
-            # reference_tourist_id = remaining_tourists_non_kids_ids[reference_tourist_index]
-            # print("returing reference_tourist_id by index: " + str(time.time() - start))
-
-            # group = [reference_tourist_id]
-            
-            #start = time.time()
-            group = groups[group_index]
-            reference_tourist_id = group[0]
-            #print("returning group in iteration: " + str(time.time() - start))
-
-            #start = time.time()
-            ref_tourist = tourists[reference_tourist_id]
-            # ref_tourist = remaining_tourists_df.loc[reference_tourist_id]
-            #print("returing ref_tourist by reference_tourist_id: " + str(time.time() - start))
-
-            #start = time.time()
-            # # remove reference tourist id, so it does not get picked again
-            # remaining_tourists.pop(reference_tourist_id, None)
-            # remaining_tourists_df.drop(index=ref_tourist.name, inplace=True)
-
-            # remaining_tourists_non_kids_ids = np.delete(remaining_tourists_non_kids_ids, reference_tourist_index)
-            # remaining_tourists_non_kids_indices = np.delete(remaining_tourists_non_kids_indices, reference_tourist_index)
-            # print("removing reference tourist from collections: " + str(time.time() - start))
-            
-            if not use_pandas:
-                # start = time.time()
-                matching_tourists = {id:tourist["age"] for id, tourist in remaining_tourists.items() 
-                                        if tourist["quarter"] == ref_tourist["quarter"] and 
-                                        tourist["duration"] == ref_tourist["duration"] and 
-                                        tourist["purpose"] == ref_tourist["purpose"] and 
-                                        tourist["accom_type"] == ref_tourist["accom_type"]}
-                # print("matching tourists. found " + str(len(matching_tourists)) + ": " + str(time.time() - start))
-            else:
-                # start = time.time()
-                excluded_ids = np.concatenate(groups)
-                matching_mask = (~remaining_tourists_df.index.isin(excluded_ids)) & (remaining_tourists_df["quarter"] == ref_tourist["quarter"]) & (remaining_tourists_df["duration"] == ref_tourist["duration"]) & (remaining_tourists_df["purpose"] == ref_tourist["purpose"]) & (remaining_tourists_df["accom_type"] == ref_tourist["accom_type"])
-
-                matching_tourists = remaining_tourists_df[matching_mask]
-                # print("remaining_tourists_df masking: " + str(time.time() - start))
-
-            matching_tourists_ids, matching_tourists_ages = [], []
-
-            if len(matching_tourists) > 0:
-                if not use_pandas:
-                    matching_tourists_ids, matching_tourists_ages = zip(*matching_tourists.items())
-                else:
-                    matching_tourists_ids = matching_tourists.index.values
-                    matching_tourists_ages = matching_tourists["age"].values
-
-                matching_tourists_ids = np.array(matching_tourists_ids)
-                matching_tourists_ages = np.array(matching_tourists_ages)
-
-            if len(matching_tourists_ids) == (group_size-1): # exactly the same number of matching tourists, add them as is
-                group.extend(matching_tourists_ids)
-
-                if not use_pandas:
-                    for id in matching_tourists_ids:
-                        del remaining_tourists[id]
-                else:
-                    remaining_tourists_df.drop(index=matching_tourists.index.values, inplace=True)    
-
-                # matching_indices = np.where(np.in1d(remaining_tourists_non_kids_ids, matching_tourists_ids))[0] # np.where returns a tuple, first element are indices that match
-                # remaining_tourists_non_kids_ids = np.delete(remaining_tourists_non_kids_ids, matching_indices)
-                # remaining_tourists_non_kids_indices = np.delete(remaining_tourists_non_kids_indices, matching_indices)
-                
-            elif len(matching_tourists_ids) < (group_size-1): # not enough, these will have to be marked to be filled in at the end
-                group.extend(matching_tourists_ids)
-                
-                groups_with_missing_tourists[group_index] = (group_size-1) - len(matching_tourists_ids)
-
-                if not use_pandas:
-                    for id in matching_tourists_ids:
-                        del remaining_tourists[id]
-                else:
-                    remaining_tourists_df.drop(index=matching_tourists.index.values, inplace=True)  
-
-                # matching_indices = np.where(np.in1d(remaining_tourists_non_kids_ids, matching_tourists_ids))[0] # np.where returns a tuple, first element are indices that match
-                # remaining_tourists_non_kids_ids = np.delete(remaining_tourists_non_kids_ids, matching_indices)
-                # remaining_tourists_non_kids_indices = np.delete(remaining_tourists_non_kids_indices, matching_indices)
-            else: # found enough matching tourists, must take group_size - 1
-                #start = time.time()
-                fam_or_non_fam_by_purpose = [dist for dist in family_or_non_family_by_purpose_dist if dist[0] == ref_tourist["purpose"]][0]
-                fam_or_non_fam_by_purpose_percent = [fam_or_non_fam_by_purpose[1], fam_or_non_fam_by_purpose[2]] # [family, nonfamily]
-                fam_or_non_fam_by_purpose_options = np.array([0, 1]) # [family, nonfamily]
-
-                fam_or_non_fam = np.random.choice(fam_or_non_fam_by_purpose_options, size=1, p=fam_or_non_fam_by_purpose_percent)[0]
-                #print("picking fam_or_non_fam: " + str(time.time() - start))
-
-                #start = time.time()
-                matching_tourists_ages_indices = np.array([index for index, _ in enumerate(matching_tourists_ages)])
-                #print("generating matching_tourists_ages_indices: " + str(time.time() - start))
-
-                #start = time.time()
-                if fam_or_non_fam == 0: # family tourism
-                    weights = [fam_age_weights[age] for age in matching_tourists_ages] # get the weight percentage for each age
-                    weights = weights/np.sum(weights) # normalize the weights so they sum to 1           
-                    partial_sampled_ages_indices = np.random.choice(matching_tourists_ages_indices, size=(group_size-1), replace=False, p=weights)
-                else: # non family tourism
-                    weights = np.exp(-non_fam_relative_exp_rate * np.abs(matching_tourists_ages - ref_tourist["age"])) # favour similar ages - calculate weights based on the distance from the target age
-                    # weights = np.exp(-0.5 * (matching_tourists_ages - ref_tourist["age"])**2) # favour similar ages - calculate weights based on the distance from the target age
-                    weights /= np.sum(weights) # normalize the weights so they sum to 1
-                    partial_sampled_ages_indices = np.random.choice(matching_tourists_ages_indices, size=(group_size-1), replace=False, p=weights)
-
-                #print("generating matching_tourists_ages_indices: " + str(time.time() - start))
-
-                partial_sampled_ids = [matching_tourists_ids[i] for i in partial_sampled_ages_indices]
-
-                group.extend(partial_sampled_ids)
-
-                if not use_pandas:
-                    for id in partial_sampled_ids:
-                        del remaining_tourists[id]
-                else:
-                    # start = time.time()     
-                    df_loc_indices = remaining_tourists_df.index.get_indexer(partial_sampled_ids)
-                    # print("generating df_loc_indices: " + str(time.time() - start))
-
-                    # start = time.time()
-                    labels_to_drop = remaining_tourists_df.index[df_loc_indices]
-                    # print("generating labels_to_drop: " + str(time.time() - start))
-
-                    # start = time.time()
-                    remaining_tourists_df.drop(index=labels_to_drop, inplace=True)
-                    # print("dropping labels_to_drop from remaining_tourists_df: " + str(time.time() - start))
-
-                #partial_sampled_ids = np.array(partial_sampled_ids)
-
-                #start = time.time()
-                #matching_indices = np.where(np.in1d(remaining_tourists_non_kids_ids, partial_sampled_ids))[0] # np.where returns a tuple, first element are indices that match
-                #print("generating matching_indices: " + str(time.time() - start))
-
-                #start = time.time()
-                #remaining_tourists_non_kids_ids = np.delete(remaining_tourists_non_kids_ids, matching_indices)
-                #print("np.delete on remaining_tourists_non_kids_ids: " + str(time.time() - start))
-
-                #start = time.time()
-                #remaining_tourists_non_kids_indices = np.delete(remaining_tourists_non_kids_indices, matching_indices)
-                #print("np.delete on remaining_tourists_non_kids_indices: " + str(time.time() - start))
-
-            #start = time.time()
-            groups[group_index] = group
-            #print("adding group to groups: " + str(time.time() - start))
-            
-            iter_count += 1
-            duration = time.time() - iter_start
-            time_sum += duration
-            avg_time = time_sum / iter_count
-
-            print("full iteration of iter count: " + str(iter_count) + ", group size: " + str(group_size) + ": time taken: " + str(duration) + ", average time: " + str(avg_time))
-
-    if (not use_pandas and len(remaining_tourists) > 0) or (use_pandas and len(remaining_tourists_df) > 0): # handle groups that still need some tourists to be assigned to them to be full, in this case purely at random
-        if not use_pandas:
-            remaining_tourists_ids = np.array([id for id in remaining_tourists.keys()])
-        else:
-            remaining_tourists_ids = np.array(remaining_tourists_df.index.values)
-
-        for groupindex, num_missing_tourists in groups_with_missing_tourists.items():
-            group = groups[groupindex]
-
-            sampled_ids = np.random.choice(remaining_tourists_ids, size=num_missing_tourists, replace=False)
-
-            group.extend(sampled_ids)
-
-            if not use_pandas:
-                for id in sampled_ids:
-                    del remaining_tourists[id]
-            else:
-                df_loc_indices = remaining_tourists_df.index.get_indexer(sampled_ids)
-                labels_to_drop = remaining_tourists_df.index[df_loc_indices]
-                remaining_tourists_df.drop(index=labels_to_drop, inplace=True)  
-            
-            matching_indices = np.where(np.in1d(remaining_tourists_ids, sampled_ids))[0] # np.where returns a tuple, first element are indices that match
-            remaining_tourists_ids = np.delete(remaining_tourists_ids, matching_indices)
-
-            # matching_indices = np.where(np.in1d(remaining_tourists_non_kids_ids, sampled_ids))[0] # np.where returns a tuple, first element are indices that match
-            # remaining_tourists_non_kids_ids = np.delete(remaining_tourists_non_kids_ids, matching_indices)
-            # remaining_tourists_non_kids_indices = np.delete(remaining_tourists_non_kids_indices, matching_indices)
-
-    return groups
-
-def generate_matching_tourists_groups(tourists, matching_tourists_by_ids, matching_tourists_by_ages, group_sizes, quarter_dist, duration_dist, family_or_non_family_by_purpose_dist, accom_capacities, accommodations_ids_by_type, accommodations_occupancy_by_days, available_room_sizes_by_days, fam_exp_rate=0.1, non_fam_relative_exp_rate=0.1, min_ref_person_age=16, year=2021):
+def generate_matching_tourists_groups(tourists, matching_tourists_by_ids, matching_tourists_by_ages, group_sizes, quarter_dist, duration_dist, family_or_non_family_by_purpose_dist, accom_capacities, accommodations_ids_by_type, accommodations_occupancy_by_days, available_room_sizes_by_days, accoms_types_room_sizes_min_max, fam_exp_rate=0.1, non_fam_relative_exp_rate=0.1, min_ref_person_age=16, year=2021):
     groups = [None] * len(group_sizes)
 
     fam_age_size_range = np.arange(101) # size range e.g. range(0, 100 + 1)
@@ -589,6 +383,11 @@ def generate_matching_tourists_groups(tourists, matching_tourists_by_ids, matchi
         month = i+1
         _, days_in_month = monthrange(year, month)
         days_by_month[month] = days_in_month
+
+    tourists_groups_by_day = {} # to serve as an index when generating itinerary per day. this provides all applicable tourists for day
+
+    for i in range(1, 365+1):
+        tourists_groups_by_day[i] = []
 
     group_sizes = sorted(group_sizes, reverse=True)
 
@@ -648,8 +447,8 @@ def generate_matching_tourists_groups(tourists, matching_tourists_by_ids, matchi
                 matching_tourists_ids = matching_tourists_by_ids[matching_key]
                 matching_tourists_ages = matching_tourists_by_ages[matching_key]
 
-                matching_tourists_ids.append(sample_id)
-                matching_tourists_ages.append(tourists[sample_id]["age"])
+                matching_tourists_ids = np.append(matching_tourists_ids, sample_id)
+                matching_tourists_ages = np.append(matching_tourists_ages, tourists[sample_id]["age"])
 
                 matching_tourists_by_ids[matching_key] = matching_tourists_ids
                 matching_tourists_by_ages[matching_key] = matching_tourists_ages        
@@ -801,12 +600,25 @@ def generate_matching_tourists_groups(tourists, matching_tourists_by_ids, matchi
         group_accom = {}
 
         if group_complete:
-            group_rooms_tourist_ids, group_accom = assign_group_into_accommodation_and_room(group, group_size, group_index, accom_capacities, ref_tourist, arrival_day, departure_day, accommodations_ids_by_type, available_room_sizes_by_days, accommodations_occupancy_by_days)
+            group_rooms_tourist_ids, group_accom = assign_group_into_accommodation_and_room(group, group_size, group_index, accom_capacities, ref_tourist, arrival_day, departure_day, accommodations_ids_by_type, available_room_sizes_by_days, accommodations_occupancy_by_days, accoms_types_room_sizes_min_max)
 
         #start = time.time()
         groups[group_index] = {"ids": group, "ref_tour_id": reference_tourist_id, "arr": arrival_day, "dep": departure_day, "purpose": ref_tourist["purpose"], "accom_type": ref_tourist["accom_type"], "sub_groups_ids": group_rooms_tourist_ids, "accom": group_accom}
         #print("adding group to groups: " + str(time.time() - start))
-            
+
+        if group_complete:
+            for roomid, tourist_ids in enumerate(group_rooms_tourist_ids):
+                for tourist_id in tourist_ids:
+                    this_tourist = tourists[tourist_id]
+                    this_tourist["group_id"] = group_index
+                    this_tourist["sub_group_id"] = roomid
+
+            for day in range(arrival_day, departure_day+1):
+                if day <= 365:
+                    tourists_groups_by_day[day].append(group_index)
+                else:
+                    break
+
         iter_count += 1
         duration = time.time() - iter_start
         time_sum += duration
@@ -832,20 +644,34 @@ def generate_matching_tourists_groups(tourists, matching_tourists_by_ids, matchi
             group_rooms_tourist_ids = []
             group_accom = {}
 
-            group_rooms_tourist_ids, group_accom = assign_group_into_accommodation_and_room(group, len(group), groupindex, accom_capacities, ref_tourist,  group_dict["arr"], group_dict["dep"], accommodations_ids_by_type, available_room_sizes_by_days, accommodations_occupancy_by_days)
+            group_rooms_tourist_ids, group_accom = assign_group_into_accommodation_and_room(group, len(group), groupindex, accom_capacities, ref_tourist,  group_dict["arr"], group_dict["dep"], accommodations_ids_by_type, available_room_sizes_by_days, accommodations_occupancy_by_days, accoms_types_room_sizes_min_max)
 
             group_dict["sub_groups_ids"] = group_rooms_tourist_ids
             group_dict["accom"] = group_accom
 
-    return groups
+            for roomid, tourist_ids in enumerate(group_rooms_tourist_ids):
+                for tourist_id in tourist_ids:
+                    this_tourist = tourists[tourist_id]
+                    this_tourist["group_id"] = group_index
+                    this_tourist["sub_group_id"] = roomid
 
-def assign_group_into_accommodation_and_room(group, group_size, group_index, accom_capacities, ref_tourist, arrival_day, departure_day, accommodations_ids_by_type, available_room_sizes_by_days, accommodations_occupancy_by_days):
+            for day in range(arrival_day, departure_day+1):
+                if day <= 365:
+                    tourists_groups_by_day[day].append(group_index)
+                else:
+                    break
+
+    return groups, tourists, tourists_groups_by_day
+
+def assign_group_into_accommodation_and_room(group, group_size, group_index, accom_capacities, ref_tourist, arrival_day, departure_day, accommodations_ids_by_type, available_room_sizes_by_days, accommodations_occupancy_by_days, accoms_types_room_sizes_min_max):
     group_clone = np.array(copy.deepcopy(group))
 
     # split into groups here
     accom_capacity = accom_capacities[ref_tourist["accom_type"] - 1] # index 0 based
-    min_room_size = accom_capacity[5]
-    max_room_size = accom_capacity[6]
+    # min_room_size = accom_capacity[5]
+    # max_room_size = accom_capacity[6]
+    min_room_size, max_room_size = accoms_types_room_sizes_min_max[ref_tourist["accom_type"]]
+
     gamma_shape = accom_capacity[7]
     # gamma_shape = 1
 
@@ -858,14 +684,13 @@ def assign_group_into_accommodation_and_room(group, group_size, group_index, acc
     group_accom = {}
     group_rooms_tourist_ids = []
 
-    group_indices = [index for index, _ in enumerate(group_clone)]
-
     for group_room_size in group_room_sizes:
+        group_indices = [index for index, _ in enumerate(group_clone)]
         sampled_indices = np.random.choice(group_indices, size=group_room_size, replace=False)
         sampled_ids = [group_clone[i] for i in sampled_indices]
         group_rooms_tourist_ids.append(sampled_ids)
 
-        np.delete(group_clone, sampled_indices)
+        group_clone = np.delete(group_clone, sampled_indices)
 
     picked_accoms = []
     accom_not_allocated = {}
@@ -1067,11 +892,12 @@ def assign_group_into_accommodation_and_room(group, group_size, group_index, acc
                         group_room.append(new_room_member_id)
                         allocated_ids.append(new_room_member_id)
 
-                        del group_accom[matched_key]
-                        group_accom[matched_grp_index, matched_sub_grp_index, matched_sub_grp_size+1] = matched_accom
                         ids_allocated += 1
                     else:
                         break
+
+                del group_accom[matched_key]
+                group_accom[matched_grp_index, matched_sub_grp_index, matched_sub_grp_size + ids_allocated] = matched_accom
         
         # this would have already been deleted by reference
         # if grp_key in room_not_allocated:
@@ -1113,7 +939,6 @@ def assign_group_into_accommodation_and_room(group, group_size, group_index, acc
                         each_day[new_room_id] = (len(sub_grp), grp_key[0], grp_key[1])
                     else:
                         break
-
             else:
                 all_accoms_by_type = accommodations_ids_by_type[accom_type]
 
@@ -1141,7 +966,185 @@ def assign_group_into_accommodation_and_room(group, group_size, group_index, acc
                 
     return group_rooms_tourist_ids, group_accom
 
+# synthpops layers methods
+def populate_tourism(pop, tourists, tourists_groups, tourists_groups_by_days):
+    """
+    Populate all of the tourism collections. Mostly to be converted to JSON.
+
+    Args:
+        pop (sp.Pop)                   : population (synthpops)
+        tourists (dict)                : key = tourist id, value = tourist info
+        tourists_groups (dict)         : key = group id, value = tourist group info
+        tourists_groups_by_days (dict) : key = day, value = tourists group ids applicable for each day
+
+    """
+    log.debug("Populating tourism.")
+
+    initialize_empty_tourists(pop, len(tourists.keys()))
+
+    initialize_empty_tourists_groups(pop, len(tourists_groups))
+
+    initialize_empty_tourists_groups_by_days(pop, len(tourists_groups_by_days.keys()))
+
+    touristindex = 0
+    # now populate tourists
+    for touristid, tourist in tourists.items():
+        # kwargs = dict(tourid=touristid,
+        #             groupid=tourist["group_id"],
+        #             subgroupid=tourist["sub_group_id"],
+        #             age=tourist["age"],
+        #             gender=tourist["gender"])
+        tourist = Tourist(tourid=touristid,
+                    groupid=tourist["group_id"],
+                    subgroupid=tourist["sub_group_id"],
+                    age=tourist["age"],
+                    gender=tourist["gender"])
+        # tourist.set_layer_group(**kwargs)
+        pop.tourists[touristindex] = sc.dcp(tourist)
+        touristindex += 1
+        
+    # now populate tourists groups
+    for groupindex, group in enumerate(tourists_groups):
+        accom_info = group["accom"]
+        accom_info_list = []
+
+        for index, accom in accom_info.items():
+            accom_id, room_id, room_size = accom[0], accom[1], accom[2]
+            accom_info_list.append([accom_id, room_id, room_size])
+
+        # # make sure there are enough workplaces
+        # kwargs = dict(groupid=groupindex,
+        #                 subgroupsmemberids=group["sub_groups_ids"],
+        #                 accominfo=accom_info_list,
+        #                 reftourid=group["ref_tour_id"],
+        #                 arr=group["arr"],
+        #                 dep=group["dep"],
+        #                 purpose=group["purpose"],
+        #                 accomtype=group["accom_type"])
+        
+        tourist_group = TouristGroup(groupid=groupindex,
+                        subgroupsmemberids=group["sub_groups_ids"],
+                        accominfo=accom_info_list,
+                        reftourid=group["ref_tour_id"],
+                        arr=group["arr"],
+                        dep=group["dep"],
+                        purpose=group["purpose"],
+                        accomtype=group["accom_type"])
+        # tourist_group.set_layer_group(**kwargs)
+        pop.tourists_groups[groupindex] = sc.dcp(tourist_group)
+
+    touristgroupsbydaysindex = 0
+    # now populate tourists groups by days
+    for day, groupids in tourists_groups_by_days.items():
+        # kwargs = dict(dayid=day,
+        #                 member_uids=groupids)
+        
+        tourist_group_by_day = TouristGroupsByDays(dayid=day,
+                                                    member_uids=groupids)
+        # tourist_group_by_day.set_layer_group(**kwargs)
+        pop.tourists_groups_by_days[touristgroupsbydaysindex] = sc.dcp(tourist_group_by_day)
+        touristgroupsbydaysindex += 1
+
+    return
+
+def initialize_empty_tourists(pop, n_tourists=None):
+    """
+    Array of empty tourist objects.
+
+    Args:
+        pop (sp.Pop)       : population
+        n_tourists (int) : the number of tourists to initialize
+    """
+    if n_tourists is not None and isinstance(n_tourists, int):
+        pop.n_tourists = n_tourists
+    else:
+        pop.n_tourists = 0
+
+    pop.tourists = [Tourist() for t in range(pop.n_tourists)]
+    return
+
+def initialize_empty_tourists_groups(pop, n_tourists_groups=None):
+    """
+    Array of empty tourist groups objects.
+
+    Args:
+        pop (sp.Pop)       : population
+        n_tourists_groups (int) : the number of tourists groups to initialize
+    """
+    if n_tourists_groups is not None and isinstance(n_tourists_groups, int):
+        pop.n_tourists_groups = n_tourists_groups
+    else:
+        pop.n_tourists_groups = 0
+
+    pop.tourists_groups = [TouristGroup() for t in range(pop.n_tourists_groups)]
+    return
+
+def initialize_empty_tourists_groups_by_days(pop, n_tourists_groups_by_days=None):
+    """
+    Array of empty tourist groups by days objects.
+
+    Args:
+        pop (sp.Pop)       : population
+        n_tourists_groups_by_days (int) : the number of touristes groups by days to initialize
+    """
+    if n_tourists_groups_by_days is not None and isinstance(n_tourists_groups_by_days, int):
+        pop.n_tourists_groups_by_days = n_tourists_groups_by_days
+    else:
+        pop.n_tourists_groups_by_days = 0
+
+    pop.tourists_groups_by_days = [TouristGroupsByDays() for t in range(pop.n_tourists_groups_by_days)]
+    return
+
+class Tourist:
+    def __init__(self, tourid=None, groupid=None, subgroupid=None, age=None, gender=None):
+        self.tourid = tourid
+        self.groupid = groupid
+        self.subgroupid = subgroupid
+        self.age = age
+        self.gender = gender
+
+    def to_dict(self):
+        return {"tourid": self.tourid, "groupid": self.groupid, "subgroupid": self.subgroupid, "age": self.age, "gender": self.gender}
+    
+    @classmethod
+    def to_dict_list(cls, tourist_list):
+        return [t.to_dict() for t in tourist_list]
+    
+class TouristGroup:
+    def __init__(self, groupid=None, subgroupsmemberids=None, accominfo=None, reftourid=None, arr=None, dep=None, purpose=None, accomtype=None):
+        self.groupid = groupid
+        self.subgroupsmemberids = subgroupsmemberids
+        self.accominfo = accominfo
+        self.reftourid = reftourid
+        self.arr = arr
+        self.dep = dep
+        self.purpose = purpose
+        self.accomtype = accomtype
+
+    def to_dict(self):
+        return {"groupid": self.groupid, "subgroupsmemberids": self.subgroupsmemberids, "accominfo": self.accominfo, "reftourid": self.reftourid, "arr": self.arr, "dep": self.dep, "purpose": self.purpose, "accomtype": self.accomtype}
+
+    @classmethod
+    def to_dict_list(cls, tourist_group_list):
+        return [tg.to_dict() for tg in tourist_group_list]
+    
+class TouristGroupsByDays:
+    def __init__(self, dayid=None, member_uids=None):
+        self.dayid = dayid
+        self.member_uids = member_uids
+
+    def to_dict(self):
+        return {"dayid": self.dayid, "member_uids": self.member_uids}
+
+    @classmethod
+    def to_dict_list(cls, tourist_group_by_days_list):
+        return [tg.to_dict() for tg in tourist_group_by_days_list]
+
+# utility methods
 def sample_gamma(gamma_shape, min, max, k = 1, returnInt = False):
+    if min == max:
+        return min
+    
     gamma_scale = (max - min) / (gamma_shape * k)
 
     sample = np.random.gamma(gamma_shape, gamma_scale)
