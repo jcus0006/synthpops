@@ -37,7 +37,7 @@ deactivate () {
 # unset irrelevant variables
 deactivate nondestructive
 
-VIRTUAL_ENV="C:\AppsPy\synthpops-1"
+VIRTUAL_ENV="C:\AppsPy\synthpops"
 export VIRTUAL_ENV
 
 _OLD_VIRTUAL_PATH="$PATH"
@@ -54,7 +54,7 @@ fi
 
 if [ -z "${VIRTUAL_ENV_DISABLE_PROMPT:-}" ] ; then
     _OLD_VIRTUAL_PS1="${PS1:-}"
-    PS1="(synthpops-1) ${PS1:-}"
+    PS1="(synthpops) ${PS1:-}"
     export PS1
 fi
 

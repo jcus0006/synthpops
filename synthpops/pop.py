@@ -237,8 +237,8 @@ class Pop(sc.prettyobj):
         log.debug('Pop(): done.')
 
         # Add summaries post hoc  --- TBD: summaries during generation
-        self.compute_information()  # compute full information
-        self.compute_summary()  # then compute condensed summary
+        # self.compute_information()  # compute full information
+        # self.compute_summary()  # then compute condensed summary
 
         # Plotting defaults
         self.plkwargs = sppl.plotting_kwargs()

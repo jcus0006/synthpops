@@ -18,16 +18,16 @@ def generate_tourism(inbound_aggregates, outbound_aggregates, accom_capacities, 
     print("generating synthetic tourism population of " + str(total_inbound_tourists) + " tourists")
 
     visualise = False
-    # total_inbound_tourists = 2000
+    total_inbound_tourists = 2000
 
-    # if total_inbound_tourists == 2000:
-    #     total_to_actual_ratio = total_inbound_tourists / actual_total_inbound_tourists
+    if total_inbound_tourists == 2000:
+        total_to_actual_ratio = total_inbound_tourists / actual_total_inbound_tourists
 
-    #     for i in range(4):
-    #         accom_capacities[i][1] = math.ceil(accom_capacities[i][1] * total_to_actual_ratio) # 5
-    #         accom_capacities[i][2] = math.ceil(accom_capacities[i][2] * total_to_actual_ratio) # 5
-    #         accom_capacities[i][3] = math.ceil(accom_capacities[i][3] * total_to_actual_ratio) # 5
-    #         accom_capacities[i][4] = math.ceil(accom_capacities[i][4] * total_to_actual_ratio) # 2
+        for i in range(4):
+            accom_capacities[i][1] = math.ceil(accom_capacities[i][1] * total_to_actual_ratio) # 5
+            accom_capacities[i][2] = math.ceil(accom_capacities[i][2] * total_to_actual_ratio) # 5
+            accom_capacities[i][3] = math.ceil(accom_capacities[i][3] * total_to_actual_ratio) # 5
+            accom_capacities[i][4] = math.ceil(accom_capacities[i][4] * total_to_actual_ratio) # 2
 
     start = time.time()
     accommodations_ids_by_type, accommodations_occupancy_by_days, available_room_sizes_by_days, accoms_types_room_sizes_min_max = generate_accommodation(accom_capacities, visualise)
