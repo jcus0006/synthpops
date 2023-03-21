@@ -8,7 +8,7 @@ class Accommodation(spb.LayerGroup):
         kwargs (dict): data dictionary of the accommodation
     """
 
-    def __init__(self, accomid=None, accomtypeid=None, **kwargs):
+    def __init__(self, accomid=None, accomtypeid=None, roomsize=None, **kwargs):
         """
         Class constructor for empty accommodation.
 
@@ -18,7 +18,7 @@ class Accommodation(spb.LayerGroup):
             **member_uids (np.array) : ids of accom members
         """
         # set up default accom values
-        super().__init__(accomid=accomid, accomtypeid=accomtypeid, **kwargs)
+        super().__init__(accomid=accomid, accomtypeid=accomtypeid, roomsize=roomsize, **kwargs)
         self.validate()
 
         return

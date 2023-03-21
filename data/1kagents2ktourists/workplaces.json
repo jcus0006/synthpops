@@ -17,7 +17,8 @@
         ],
         "wpid": 0,
         "indid": 1,
-        "accomid": null
+        "accomid": null,
+        "accomtypeid": null
     },
     {
         "member_uids": [
@@ -25,7 +26,8 @@
         ],
         "wpid": 1,
         "indid": 2,
-        "accomid": null
+        "accomid": null,
+        "accomtypeid": null
     },
     {
         "member_uids": [
@@ -70,7 +72,8 @@
         ],
         "wpid": 2,
         "indid": 3,
-        "accomid": null
+        "accomid": null,
+        "accomtypeid": null
     },
     {
         "member_uids": [
@@ -78,7 +81,8 @@
         ],
         "wpid": 3,
         "indid": 5,
-        "accomid": null
+        "accomid": null,
+        "accomtypeid": null
     },
     {
         "member_uids": [
@@ -88,7 +92,8 @@
         ],
         "wpid": 4,
         "indid": 6,
-        "accomid": null
+        "accomid": null,
+        "accomtypeid": null
     },
     {
         "member_uids": [
@@ -106,7 +111,8 @@
         ],
         "wpid": 5,
         "indid": 6,
-        "accomid": null
+        "accomid": null,
+        "accomtypeid": null
     },
     {
         "member_uids": [
@@ -128,7 +134,8 @@
         ],
         "wpid": 6,
         "indid": 6,
-        "accomid": null
+        "accomid": null,
+        "accomtypeid": null
     },
     {
         "member_uids": [
@@ -178,7 +185,8 @@
         ],
         "wpid": 7,
         "indid": 7,
-        "accomid": null
+        "accomid": null,
+        "accomtypeid": null
     },
     {
         "member_uids": [
@@ -197,7 +205,8 @@
         ],
         "wpid": 8,
         "indid": 8,
-        "accomid": null
+        "accomid": null,
+        "accomtypeid": null
     },
     {
         "member_uids": [
@@ -206,7 +215,8 @@
         ],
         "wpid": 9,
         "indid": 8,
-        "accomid": null
+        "accomid": null,
+        "accomtypeid": null
     },
     {
         "member_uids": [
@@ -218,7 +228,8 @@
         ],
         "wpid": 10,
         "indid": 8,
-        "accomid": null
+        "accomid": null,
+        "accomtypeid": null
     },
     {
         "member_uids": [
@@ -230,7 +241,8 @@
         ],
         "wpid": 11,
         "indid": 9,
-        "accomid": null
+        "accomid": null,
+        "accomtypeid": null
     },
     {
         "member_uids": [
@@ -240,7 +252,8 @@
         ],
         "wpid": 12,
         "indid": 9,
-        "accomid": null
+        "accomid": null,
+        "accomtypeid": null
     },
     {
         "member_uids": [
@@ -262,7 +275,8 @@
         ],
         "wpid": 13,
         "indid": 9,
-        "accomid": null
+        "accomid": null,
+        "accomtypeid": null
     },
     {
         "member_uids": [
@@ -279,7 +293,8 @@
         ],
         "wpid": 14,
         "indid": 10,
-        "accomid": null
+        "accomid": null,
+        "accomtypeid": null
     },
     {
         "member_uids": [
@@ -287,7 +302,8 @@
         ],
         "wpid": 15,
         "indid": 10,
-        "accomid": null
+        "accomid": null,
+        "accomtypeid": null
     },
     {
         "member_uids": [
@@ -297,7 +313,8 @@
         ],
         "wpid": 16,
         "indid": 11,
-        "accomid": null
+        "accomid": null,
+        "accomtypeid": null
     },
     {
         "member_uids": [
@@ -309,7 +326,8 @@
         ],
         "wpid": 17,
         "indid": 11,
-        "accomid": null
+        "accomid": null,
+        "accomtypeid": null
     },
     {
         "member_uids": [
@@ -325,7 +343,8 @@
         ],
         "wpid": 18,
         "indid": 11,
-        "accomid": null
+        "accomid": null,
+        "accomtypeid": null
     },
     {
         "member_uids": [
@@ -333,7 +352,8 @@
         ],
         "wpid": 19,
         "indid": 12,
-        "accomid": null
+        "accomid": null,
+        "accomtypeid": null
     },
     {
         "member_uids": [
@@ -341,7 +361,8 @@
         ],
         "wpid": 20,
         "indid": 12,
-        "accomid": null
+        "accomid": null,
+        "accomtypeid": null
     },
     {
         "member_uids": [
@@ -355,7 +376,8 @@
         ],
         "wpid": 21,
         "indid": 13,
-        "accomid": null
+        "accomid": null,
+        "accomtypeid": null
     },
     {
         "member_uids": [
@@ -367,7 +389,8 @@
         ],
         "wpid": 22,
         "indid": 13,
-        "accomid": null
+        "accomid": null,
+        "accomtypeid": null
     },
     {
         "member_uids": [
@@ -387,7 +410,8 @@
         ],
         "wpid": 23,
         "indid": 13,
-        "accomid": null
+        "accomid": null,
+        "accomtypeid": null
     },
     {
         "member_uids": [
@@ -401,7 +425,8 @@
         ],
         "wpid": 24,
         "indid": 13,
-        "accomid": null
+        "accomid": null,
+        "accomtypeid": null
     },
     {
         "member_uids": [
@@ -410,7 +435,8 @@
         ],
         "wpid": 25,
         "indid": 13,
-        "accomid": null
+        "accomid": null,
+        "accomtypeid": null
     },
     {
         "member_uids": [
@@ -436,7 +462,8 @@
         ],
         "wpid": 26,
         "indid": 14,
-        "accomid": 1
+        "accomid": 0,
+        "accomtypeid": 1
     },
     {
         "member_uids": [
@@ -446,7 +473,8 @@
         ],
         "wpid": 27,
         "indid": 14,
-        "accomid": 2
+        "accomid": 0,
+        "accomtypeid": 2
     },
     {
         "member_uids": [
@@ -454,7 +482,8 @@
         ],
         "wpid": 28,
         "indid": 14,
-        "accomid": 3
+        "accomid": 0,
+        "accomtypeid": 3
     },
     {
         "member_uids": [
@@ -462,7 +491,8 @@
         ],
         "wpid": 29,
         "indid": 14,
-        "accomid": 4
+        "accomid": 0,
+        "accomtypeid": 4
     },
     {
         "member_uids": [
@@ -470,7 +500,8 @@
         ],
         "wpid": 30,
         "indid": 14,
-        "accomid": 5
+        "accomid": 1,
+        "accomtypeid": 4
     },
     {
         "member_uids": [
@@ -478,7 +509,8 @@
         ],
         "wpid": 31,
         "indid": 14,
-        "accomid": 6
+        "accomid": 2,
+        "accomtypeid": 4
     },
     {
         "member_uids": [
@@ -486,7 +518,8 @@
         ],
         "wpid": 32,
         "indid": 14,
-        "accomid": 7
+        "accomid": 3,
+        "accomtypeid": 4
     },
     {
         "member_uids": [
@@ -494,7 +527,8 @@
         ],
         "wpid": 33,
         "indid": 14,
-        "accomid": 8
+        "accomid": 4,
+        "accomtypeid": 4
     },
     {
         "member_uids": [
@@ -502,7 +536,8 @@
         ],
         "wpid": 34,
         "indid": 14,
-        "accomid": 9
+        "accomid": 5,
+        "accomtypeid": 4
     },
     {
         "member_uids": [
@@ -510,7 +545,8 @@
         ],
         "wpid": 35,
         "indid": 14,
-        "accomid": 10
+        "accomid": 6,
+        "accomtypeid": 4
     },
     {
         "member_uids": [
@@ -518,7 +554,8 @@
         ],
         "wpid": 36,
         "indid": 14,
-        "accomid": 11
+        "accomid": 7,
+        "accomtypeid": 4
     },
     {
         "member_uids": [
@@ -526,7 +563,8 @@
         ],
         "wpid": 37,
         "indid": 14,
-        "accomid": 12
+        "accomid": 8,
+        "accomtypeid": 4
     },
     {
         "member_uids": [
@@ -534,7 +572,8 @@
         ],
         "wpid": 38,
         "indid": 14,
-        "accomid": 13
+        "accomid": 9,
+        "accomtypeid": 4
     },
     {
         "member_uids": [
@@ -557,7 +596,8 @@
         ],
         "wpid": 39,
         "indid": 14,
-        "accomid": null
+        "accomid": null,
+        "accomtypeid": null
     },
     {
         "member_uids": [
@@ -566,7 +606,8 @@
         ],
         "wpid": 40,
         "indid": 15,
-        "accomid": null
+        "accomid": null,
+        "accomtypeid": null
     },
     {
         "member_uids": [
@@ -576,7 +617,8 @@
         ],
         "wpid": 41,
         "indid": 15,
-        "accomid": null
+        "accomid": null,
+        "accomtypeid": null
     },
     {
         "member_uids": [
@@ -589,7 +631,8 @@
         ],
         "wpid": 42,
         "indid": 15,
-        "accomid": null
+        "accomid": null,
+        "accomtypeid": null
     },
     {
         "member_uids": [
@@ -600,7 +643,8 @@
         ],
         "wpid": 43,
         "indid": 15,
-        "accomid": null
+        "accomid": null,
+        "accomtypeid": null
     },
     {
         "member_uids": [
@@ -610,7 +654,8 @@
         ],
         "wpid": 44,
         "indid": 15,
-        "accomid": null
+        "accomid": null,
+        "accomtypeid": null
     },
     {
         "member_uids": [
@@ -622,7 +667,8 @@
         ],
         "wpid": 45,
         "indid": 15,
-        "accomid": null
+        "accomid": null,
+        "accomtypeid": null
     },
     {
         "member_uids": [
@@ -633,7 +679,8 @@
         ],
         "wpid": 46,
         "indid": 15,
-        "accomid": null
+        "accomid": null,
+        "accomtypeid": null
     },
     {
         "member_uids": [
@@ -642,7 +689,8 @@
         ],
         "wpid": 47,
         "indid": 15,
-        "accomid": null
+        "accomid": null,
+        "accomtypeid": null
     },
     {
         "member_uids": [
@@ -678,7 +726,8 @@
         ],
         "wpid": 48,
         "indid": 17,
-        "accomid": null
+        "accomid": null,
+        "accomtypeid": null
     },
     {
         "member_uids": [
@@ -698,7 +747,8 @@
         ],
         "wpid": 49,
         "indid": 18,
-        "accomid": null
+        "accomid": null,
+        "accomtypeid": null
     },
     {
         "member_uids": [
@@ -706,7 +756,8 @@
         ],
         "wpid": 50,
         "indid": 18,
-        "accomid": null
+        "accomid": null,
+        "accomtypeid": null
     },
     {
         "member_uids": [
@@ -715,7 +766,8 @@
         ],
         "wpid": 51,
         "indid": 19,
-        "accomid": null
+        "accomid": null,
+        "accomtypeid": null
     },
     {
         "member_uids": [
@@ -724,7 +776,8 @@
         ],
         "wpid": 52,
         "indid": 19,
-        "accomid": null
+        "accomid": null,
+        "accomtypeid": null
     },
     {
         "member_uids": [
@@ -732,6 +785,7 @@
         ],
         "wpid": 53,
         "indid": 19,
-        "accomid": null
+        "accomid": null,
+        "accomtypeid": null
     }
 ]

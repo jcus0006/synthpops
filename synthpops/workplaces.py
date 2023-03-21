@@ -25,7 +25,7 @@ class Workplace(spb.LayerGroup):
         kwargs (dict): data dictionary of the workplace
     """
 
-    def __init__(self, wpid=None, indid=None, accomid=None, **kwargs):
+    def __init__(self, wpid=None, indid=None, accomid=None, accomtypeid=None, **kwargs):
         """
         Class constructor for empty workplace.
 
@@ -35,7 +35,7 @@ class Workplace(spb.LayerGroup):
             **member_uids (np.array) : ids of workplace members
         """
         # set up default workplace values
-        super().__init__(wpid=wpid, indid=indid, accomid=accomid, **kwargs)
+        super().__init__(wpid=wpid, indid=indid, accomid=accomid, accomtypeid=accomtypeid, **kwargs)
         self.validate()
 
         return
@@ -136,7 +136,7 @@ def initialize_empty_accommodations(pop, n_accommodations=None):
     pop.accommodations = [Accommodation() for aw in range(pop.n_accommodations)]
     return
 
-def populate_industries_and_workplaces(pop, industry_workplaces, accommodations_by_type):
+def populate_industries_and_workplaces(pop, industry_workplaces, accommodations_by_type, accommodations_staff_uids):
     """
     Populate all of the workplaces. Store each workplace at the index corresponding to it's wpid.
 
@@ -151,17 +151,19 @@ def populate_industries_and_workplaces(pop, industry_workplaces, accommodations_
 
     log.debug("Populating workplaces.")
 
-    accoms_len = 0
+    accoms_room_sizes_len = 0
+    accoms_unique_len = 0
 
     if len(accommodations_by_type) > 0:
-        accoms_len = sum([len(accoms_by_type.keys()) for _, accoms_by_type in accommodations_by_type.items()])
+        accoms_room_sizes_len = sum([len(set(list(accom.values()))) for accoms_by_type in accommodations_by_type.values() for accom in accoms_by_type.values()])
+        accoms_unique_len = len([accoms_ids for accoms_by_type in accommodations_by_type.values() for accoms_ids in accoms_by_type.keys()])
 
-        initialize_empty_accommodations(pop, accoms_len)
+        initialize_empty_accommodations(pop, accoms_room_sizes_len)
 
     initialize_empty_industries(pop, len(industry_workplaces.keys()))
 
     workplaces_len = sum([len(workplaces) for workplaces in industry_workplaces.values()])
-    initialize_empty_workplaces(pop, workplaces_len + accoms_len)
+    initialize_empty_workplaces(pop, workplaces_len + accoms_unique_len)
 
     workplaceindex = 0
     industryindex = 0
@@ -172,21 +174,36 @@ def populate_industries_and_workplaces(pop, industry_workplaces, accommodations_
 
         if industry == 14: # first create accoms to then be able to link them to workplaces
             accom_index = 0
-            for accomtypeid, accoms in accommodations_by_type.items():
-                for accomid, workers in accoms.items():
-                    kwargs = dict(accomid=accom_index,
-                                    accomtypeid=accomtypeid,
-                                    member_uids=workers,
-                                )
-                    
-                    accommodation = Accommodation()
-                    accommodation.set_layer_group(**kwargs)
-                    pop.accommodations[accom_index] = sc.dcp(accommodation)
-                    accom_index += 1
+
+            for accomtypeid, accoms_by_type in accommodations_by_type.items(): 
+                for accomid, rooms in accoms_by_type.items():
+                    roomids_by_sizes = {}
+                    for roomid, roomsize in rooms.items():
+                        if roomsize not in roomids_by_sizes:
+                            roomids_by_sizes[roomsize] = [roomid]
+                        else:
+                            temp_roomids_by_sizes = roomids_by_sizes[roomsize]
+                            temp_roomids_by_sizes.append(roomid)
+                            roomids_by_sizes[roomsize] = temp_roomids_by_sizes
+
+                    for roomsize, roomids in roomids_by_sizes.items():
+                        kwargs = dict(accomid=accomid,
+                                        accomtypeid=accomtypeid,
+                                        roomsize=roomsize,
+                                        member_uids=roomids,
+                                    )
+                        
+                        accommodation = Accommodation()
+                        accommodation.set_layer_group(**kwargs)
+                        pop.accommodations[accom_index] = sc.dcp(accommodation)
+                        accom_index += 1
+
+                    workers = accommodations_staff_uids[accomtypeid][accomid]
 
                     kwargs = dict(wpid=workplaceindex,
                             indid=industry,
-                            accomid=accom_index,
+                            accomid=accomid,
+                            accomtypeid=accomtypeid,
                             member_uids=workers,
                         )
                     workplace = Workplace()

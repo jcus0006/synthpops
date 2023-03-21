@@ -588,6 +588,7 @@ class Pop(sc.prettyobj):
             self.tourists_list = tourists
             self.tourists_groups_list = tourists_groups
             self.tourists_groups_by_days_list = tourists_groups_by_days
+            self.accommodations_ids_by_type_list = accommodations_ids_by_type
             self.accommodations_staff_uid_lists = accommodations_staff_uid_lists
             self.student_uid_lists = student_uid_lists
             self.teacher_uid_lists = teacher_uid_lists
@@ -1013,7 +1014,7 @@ class Pop(sc.prettyobj):
         self.initialize_industries_list()
         self.initialize_workplaces_list()
         self.initialize_accommodations_list()
-        self.populate_industries_and_workplaces(self.industries_workplace_uid_lists, self.accommodations_staff_uid_lists)
+        self.populate_industries_and_workplaces(self.industries_workplace_uid_lists, self.accommodations_ids_by_type_list, self.accommodations_staff_uid_lists)
 
         self.initialize_schools_list()
         self.populate_schools(self.student_uid_lists, self.teacher_uid_lists,
@@ -1187,14 +1188,14 @@ class Pop(sc.prettyobj):
         sphh.initialize_empty_workplaces(self, n_workplaces)
         return
 
-    def populate_industries_and_workplaces(self, workplaces, accommodations):
+    def populate_industries_and_workplaces(self, workplaces, accommodations, accommodations_staff_uids):
         """
         Populate all of the workplaces. Store each workplace at the index corresponding to it's wpid.
 
         Args:
             workplaces (list) : list of lists where each sublist represents a workplace and contains the ids of the workplace members
         """
-        spw.populate_industries_and_workplaces(self, workplaces, accommodations)
+        spw.populate_industries_and_workplaces(self, workplaces, accommodations, accommodations_staff_uids)
         return
     
     def populate_tourism(self, tourists, tourists_groups, tourists_groups_by_days):

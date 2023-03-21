@@ -139,3 +139,4 @@ dmypy.json
 /figures/*.png
 
 data/500kagents/agents.json
+data/500kagents1mtourists
