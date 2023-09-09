@@ -407,8 +407,8 @@ def assign_rest_of_workers(all_worker_uids, workplace_sizes, potential_worker_ui
         if sum_b_prob > 0: # pragma: no cover
             b_prob = b_prob / sum_b_prob
 
-        if size > len(potential_worker_uids) - 1: # pragma: no cover
-            size = len(potential_worker_uids) - 1
+        if size > len(potential_worker_uids): # pragma: no cover
+            size = len(potential_worker_uids)
         workers_left_count = np.sum([workers_by_age_to_assign_count[a] for a in workers_by_age_to_assign_count])
         if size > workers_left_count:
             size = workers_left_count + 1
@@ -427,7 +427,7 @@ def assign_rest_of_workers(all_worker_uids, workplace_sizes, potential_worker_ui
                 workers_by_age_to_assign_count[ai] = 0  # set to zero now that everyone will be placed in this last workplace
             workers_by_age_to_assign_distr = spb.norm_dic(workers_by_age_to_assign_count)
         else:
-            for i in range(1, size):
+            for i in range(1, size): # 1 has already been assigned as ref person
 
                 bi = spsamp.fast_choice(b_prob)
 
@@ -477,6 +477,13 @@ def assign_rest_of_workers(all_worker_uids, workplace_sizes, potential_worker_ui
         workplace_age_lists.append(new_work)
         workplace_uid_lists.append(new_work_uids)
     return workplace_age_lists, workplace_uid_lists, all_worker_uids, potential_worker_uids_by_age, workers_by_age_to_assign_count
+
+def assign_workers_to_households(all_worker_uids, potential_worker_uids, contact_matrices, households):
+    """
+    Assign the rest of the workers to households as workplaces.
+
+    """
+    # future improvement
 
 
 def count_employment_by_age(popdict):

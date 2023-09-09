@@ -1,10 +1,20 @@
 Traceback (most recent call last):
-  File "c:\AppsPy\synthpops-1\synthpops\pop.py", line 609, in generate
-    self.set_layer_classes()
-  File "c:\AppsPy\synthpops-1\synthpops\pop.py", line 1017, in set_layer_classes
-    self.populate_industries_and_workplaces(self.industries_workplace_uid_lists, self.accommodations_ids_by_type_list, self.accommodations_staff_uid_lists)
-  File "c:\AppsPy\synthpops-1\synthpops\pop.py", line 1198, in populate_industries_and_workplaces
-    spw.populate_industries_and_workplaces(self, workplaces, accommodations, accommodations_staff_uids)
-  File "c:\AppsPy\synthpops-1\synthpops\workplaces.py", line 221, in populate_industries_and_workplaces
-    pop.workplaces[workplace['wpid']] = sc.dcp(workplace)
-IndexError: list assignment index out of range
+  File "c:\AppsPy\synthpops\synthpops\pop.py", line 651, in generate
+    json.dump(population, f, ensure_ascii=False, indent=4, cls=NpEncoder)
+  File "C:\Program Files\Python39\lib\json\__init__.py", line 179, in dump
+    for chunk in iterable:
+  File "C:\Program Files\Python39\lib\json\encoder.py", line 431, in _iterencode
+    yield from _iterencode_dict(o, _current_indent_level)
+  File "C:\Program Files\Python39\lib\json\encoder.py", line 405, in _iterencode_dict
+    yield from chunks
+  File "C:\Program Files\Python39\lib\json\encoder.py", line 405, in _iterencode_dict
+    yield from chunks
+  File "C:\Program Files\Python39\lib\json\encoder.py", line 405, in _iterencode_dict
+    yield from chunks
+  File "C:\Program Files\Python39\lib\json\encoder.py", line 438, in _iterencode
+    o = _default(o)
+  File "c:\AppsPy\synthpops\synthpops\util\NpEncoder.py", line 13, in default
+    return super(NpEncoder, self).default(obj)
+  File "C:\Program Files\Python39\lib\json\encoder.py", line 179, in default
+    raise TypeError(f'Object of type {o.__class__.__name__} '
+TypeError: Object of type set is not JSON serializable

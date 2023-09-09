@@ -49,6 +49,7 @@ class Pop(sc.prettyobj):
                  tourism=False,
                  beds_staff_hotel_ratio=0.83,
                  beds_staff_non_hotel_ratio=8,
+                 total_inbound_tourists_override=None,
                  with_school_types=False,
                  school_mixing_type='random',
                  average_class_size=20,
@@ -195,6 +196,7 @@ class Pop(sc.prettyobj):
         self.tourism = tourism
         self.beds_staff_hotel_ratio = beds_staff_hotel_ratio
         self.beds_staff_non_hotel_ratio = beds_staff_non_hotel_ratio
+        self.total_inbound_tourists_override = total_inbound_tourists_override
 
         self.save_to_json_file = save_to_json_file
 
@@ -256,6 +258,8 @@ class Pop(sc.prettyobj):
             network (dict): A dictionary of the full population with ages, connections, and other attributes.
         """
         log.debug('generate()')
+
+        population = {}
 
         try:
 
@@ -477,10 +481,10 @@ class Pop(sc.prettyobj):
             if self.tourism:
                 inbound_aggregates, outbound_aggregates, accom_capacities, group_size_dist, family_or_non_family_by_purpose_dist, gender_dist, age_groups_dist, quarter_dist, duration_dist, accom_type_dist, purpose_dist = spdata.read_tourism_distributions(**self.loc_pars)
 
-                tourists, tourists_groups, tourists_groups_by_days, accommodations_ids_by_type = trsm.generate_tourism(inbound_aggregates, outbound_aggregates, accom_capacities, group_size_dist, family_or_non_family_by_purpose_dist, gender_dist, age_groups_dist, quarter_dist, duration_dist, accom_type_dist, purpose_dist, 2021, True)
+                tourists, tourists_groups, tourists_groups_by_days, accommodations_ids_by_type = trsm.generate_tourism(inbound_aggregates, outbound_aggregates, accom_capacities, group_size_dist, family_or_non_family_by_purpose_dist, gender_dist, age_groups_dist, quarter_dist, duration_dist, accom_type_dist, purpose_dist, 2021, self.total_inbound_tourists_override, False)
 
                 # although not being assigned based on ages, may still need to pass potential_worker_uids_by_age to update it. but must check whether it is being updated and passed back to the main method in previous cases
-                acc_potential_worker_uids, acc_potential_worker_uids_by_age, _, acc_workers_by_age_to_assign_count = spwc.get_uids_workers_by_industry(potential_worker_uids, empind_by_uid, 14) # [9,14,18,19]'
+                acc_potential_worker_uids, acc_potential_worker_uids_by_age, _, acc_workers_by_age_to_assign_count = spwc.get_uids_workers_by_industry(potential_worker_uids, empind_by_uid, 9) # [9,14,18,19]'
 
                 potential_worker_uids, accommodations_staff_uid_lists = spwc.assign_accommodations_staff(potential_worker_uids, self.beds_staff_hotel_ratio, self.beds_staff_non_hotel_ratio, accommodations_ids_by_type, acc_potential_worker_uids)
             
@@ -575,10 +579,10 @@ class Pop(sc.prettyobj):
                                             school_type_by_age=school_type_by_age,
                                             max_contacts=max_contacts)
 
-            # Change types
-            for key, person in population.items():
-                for layerkey in population[key]['contacts'].keys():
-                    population[key]['contacts'][layerkey] = list(population[key]['contacts'][layerkey])
+            # Change types (contacts are not required for mtdcovabm)
+            # for key, person in population.items():
+            #     for layerkey in population[key]['contacts'].keys():
+            #         population[key]['contacts'][layerkey] = list(population[key]['contacts'][layerkey])
 
             school_mixing_types = [self.schools_in_groups[ns]['school_mixing_type'] for ns in range(len(self.schools_in_groups))]
 
@@ -608,6 +612,11 @@ class Pop(sc.prettyobj):
 
             self.set_layer_classes()
             self.clean_up_layer_info()
+
+            for person in population.values():
+                del person["loc"]
+                del person["contacts"]
+                del person["sc_mixing_type"]
 
             # Save as JSON file
 

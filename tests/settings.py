@@ -6,17 +6,20 @@ pop_sizes = sc.objdict(
     medium       = 8e3,
     medium_large = 12e3,
     large        = 20e3,
-    malta        = 519562
+    malta        = 519562,
+    ten_k        = 10e3
 )
 
 student_teacher_ratio = sc.objdict(
-    small = 7.5,
-    malta = 10
+    small = 7.5, # 1k
+    ten_k = 11, # 10k
+    malta = 10 # 519562
 )
 
 student_allstaff_ratio = sc.objdict(
-    small = 3.9,
-    malta = 5.2
+    small = 3.9, # 1k
+    ten_k = 5.3,
+    malta = 5.2 # 519562
 )
 
 def get_full_feature_pars():

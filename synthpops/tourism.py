@@ -12,15 +12,16 @@ from .config import logger as log
 from . import base as spb
 import sciris as sc
 
-def generate_tourism(inbound_aggregates, outbound_aggregates, accom_capacities, group_size_dist, family_or_non_family_by_purpose_dist, gender_dist, age_groups_dist, quarter_dist, duration_dist, accom_type_dist, purpose_dist, year=2021, visualise = False):
+def generate_tourism(inbound_aggregates, outbound_aggregates, accom_capacities, group_size_dist, family_or_non_family_by_purpose_dist, gender_dist, age_groups_dist, quarter_dist, duration_dist, accom_type_dist, purpose_dist, year=2021, total_inbound_tourists_override=None, visualise = False):
     total_inbound_tourists = inbound_aggregates["total_inbound_tourists"]
     actual_total_inbound_tourists = total_inbound_tourists
-    print("generating synthetic tourism population of " + str(total_inbound_tourists) + " tourists")
 
-    visualise = False
-    total_inbound_tourists = 2000
+    # visualise = True
+    # total_inbound_tourists_override = 2000
 
-    if total_inbound_tourists == 2000:
+    if total_inbound_tourists_override is not None:
+        total_inbound_tourists = total_inbound_tourists_override
+        
         total_to_actual_ratio = total_inbound_tourists / actual_total_inbound_tourists
 
         for i in range(4):
@@ -28,6 +29,8 @@ def generate_tourism(inbound_aggregates, outbound_aggregates, accom_capacities, 
             accom_capacities[i][2] = math.ceil(accom_capacities[i][2] * total_to_actual_ratio) # 5
             accom_capacities[i][3] = math.ceil(accom_capacities[i][3] * total_to_actual_ratio) # 5
             accom_capacities[i][4] = math.ceil(accom_capacities[i][4] * total_to_actual_ratio) # 2
+
+    print("generating synthetic tourism population of " + str(total_inbound_tourists) + " tourists")
 
     start = time.time()
     accommodations_ids_by_type, accommodations_occupancy_by_days, available_room_sizes_by_days, accoms_types_room_sizes_min_max = generate_accommodation(accom_capacities, visualise)
@@ -657,7 +660,8 @@ def generate_matching_tourists_groups(tourists, matching_tourists_by_ids, matchi
 
             for day in range(arrival_day, departure_day+1):
                 if day <= 365:
-                    tourists_groups_by_day[day].append(group_index)
+                    if group_index not in tourists_groups_by_day[day]:
+                        tourists_groups_by_day[day].append(group_index)
                 else:
                     break
 
@@ -928,17 +932,26 @@ def assign_group_into_accommodation_and_room(group, group_size, group_index, acc
                 last_room_id = list(arr_day_only_temp)[-1]
 
                 new_room_id = last_room_id + 1
+                new_room_size = len(sub_grp)
 
-                group_accom[(grp_key[0], grp_key[1], len(sub_grp))] = (random_accom_id, new_room_id, len(sub_grp))
-                arr_day_only[new_room_id] = (len(sub_grp), grp_key[0], grp_key[1])
+                group_accom[(grp_key[0], grp_key[1], new_room_size)] = (random_accom_id, new_room_id, new_room_size)
+                arr_day_only[new_room_id] = (new_room_size, grp_key[0], grp_key[1])
                 # arrival day already taken care of
                 for day in range(arrival_day + 1, departure_day + 1):
                     if day <= 365: # as of now, only consider 1 full year
                         each_day = accommodations_occupancy_by_days[day][accom_type][random_accom_id]
 
-                        each_day[new_room_id] = (len(sub_grp), grp_key[0], grp_key[1])
+                        each_day[new_room_id] = (new_room_size, grp_key[0], grp_key[1])
                     else:
                         break
+                
+                accom_by_type = accommodations_ids_by_type[accom_type][random_accom_id]
+
+                accom_by_type[new_room_id] = new_room_size
+
+                accom_by_type = OrderedDict(sorted(accom_by_type.items(), key=lambda kv: kv[1]))
+
+                accommodations_ids_by_type[accom_type][random_accom_id] = accom_by_type
             else:
                 all_accoms_by_type = accommodations_ids_by_type[accom_type]
 
@@ -952,17 +965,26 @@ def assign_group_into_accommodation_and_room(group, group_size, group_index, acc
                 last_room_id = list(arr_day_only_temp)[-1]
 
                 new_room_id = last_room_id + 1
+                new_room_size = len(sub_grp)
 
-                group_accom[(grp_key[0], grp_key[1], len(sub_grp))] = (random_accom_id, new_room_id, len(sub_grp))
-                arr_day_only[new_room_id] = (len(sub_grp), grp_key[0], grp_key[1])
+                group_accom[(grp_key[0], grp_key[1], new_room_size)] = (random_accom_id, new_room_id, new_room_size)
+                arr_day_only[new_room_id] = (new_room_size, grp_key[0], grp_key[1])
                 # arrival day already taken care of
                 for day in range(arrival_day + 1, departure_day + 1):
                     if day <= 365: # as of now, only consider 1 full year
                         each_day = accommodations_occupancy_by_days[day][accom_type][random_accom_id]
 
-                        each_day[new_room_id] = (len(sub_grp), grp_key[0], grp_key[1])
+                        each_day[new_room_id] = (new_room_size, grp_key[0], grp_key[1])
                     else:
                         break
+
+                accom_by_type = accommodations_ids_by_type[accom_type][random_accom_id]
+
+                accom_by_type[new_room_id] = new_room_size
+
+                accom_by_type = OrderedDict(sorted(accom_by_type.items(), key=lambda kv: kv[1]))
+
+                accommodations_ids_by_type[accom_type][random_accom_id] = accom_by_type
                 
     return group_rooms_tourist_ids, group_accom
 
