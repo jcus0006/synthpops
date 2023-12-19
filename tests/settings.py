@@ -22,6 +22,12 @@ student_allstaff_ratio = sc.objdict(
     malta = 5.2 # 519562
 )
 
+total_inbound_tourists_override = sc.objdict(
+    small = 4000,
+    ten_k = 40000,
+    malta = None
+)
+
 def get_full_feature_pars():
     pars = dict(
         n                               = pop_sizes.small_medium,
