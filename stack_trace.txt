@@ -1,6 +1,8 @@
 Traceback (most recent call last):
-  File "c:\AppsPy\synthpops\synthpops\pop.py", line 446, in generate
-    non_teaching_staff_uid_lists, potential_worker_uids, edu_potential_worker_uids_by_age, edu_workers_by_age_to_assign_count = spsch.assign_additional_staff_to_schools(potential_worker_uids,
-  File "c:\AppsPy\synthpops\synthpops\schools.py", line 1486, in assign_additional_staff_to_schools
-    uid = potential_worker_uids_by_age[a][0]
-IndexError: list index out of range
+  File "c:\AppsPy\synthpops\synthpops\pop.py", line 484, in generate
+    tourists, tourists_groups, tourists_groups_by_days, accommodations_ids_by_type = trsm.generate_tourism(inbound_aggregates, outbound_aggregates, accom_capacities, group_size_dist, family_or_non_family_by_purpose_dist, gender_dist, age_groups_dist, quarter_dist, duration_dist, accom_type_dist, purpose_dist, 2021, self.total_inbound_tourists_override, False)
+  File "c:\AppsPy\synthpops\synthpops\tourism.py", line 53, in generate_tourism
+    temp_tourists_groups, temp_tourists, temp_tourists_groups_by_days = generate_matching_tourists_groups(temp_tourists, temp_tourists_groups, tourists_groups_by_day, temp_matching_tourists_ids, temp_matching_tourists_ages, temp_group_sizes, quarter_dist, duration_dist, family_or_non_family_by_purpose_dist, accom_capacities, accommodations_ids_by_type, accommodations_occupancy_by_days, available_room_sizes_by_days, accoms_types_room_sizes_min_max, year=year, exceed_year=True)
+  File "c:\AppsPy\synthpops\synthpops\tourism.py", line 682, in generate_matching_tourists_groups
+    ref_persons_by_id.append[ref_persons_by_index[group_index]]
+TypeError: 'builtin_function_or_method' object is not subscriptable

@@ -38,7 +38,7 @@ def generate_tourism(inbound_aggregates, outbound_aggregates, accom_capacities, 
     start = time.time()
     accommodations_ids_by_type, accommodations_occupancy_by_days, available_room_sizes_by_days, accoms_types_room_sizes_min_max = generate_accommodation(accom_capacities, visualise)
     print("generate_accommodation: " + str(time.time() - start))
-
+    
     last_quarter_percent = quarter_dist[3][2]
     prev_dec_total_inbound_tourists = round((total_inbound_tourists * last_quarter_percent) / 3) # percent of last quarter divided by 3 months to get December only
 
@@ -70,7 +70,7 @@ def generate_tourism(inbound_aggregates, outbound_aggregates, accom_capacities, 
     print("generate_group_sizes: " + str(time.time() - start))
 
     start = time.time()
-    tourists_groups, tourists, tourists_groups_by_days = generate_matching_tourists_groups(tourists, tourists_groups, tourists_groups_by_day, matching_tourists_ids, matching_tourists_ages, group_sizes, quarter_dist, duration_dist, family_or_non_family_by_purpose_dist, accom_capacities, accommodations_ids_by_type, accommodations_occupancy_by_days, available_room_sizes_by_days, accoms_types_room_sizes_min_max, year=year)
+    tourists_groups, tourists, tourists_groups_by_days = generate_matching_tourists_groups(tourists, tourists_groups, tourists_groups_by_day, matching_tourists_ids, matching_tourists_ages, group_sizes, quarter_dist, duration_dist, family_or_non_family_by_purpose_dist, accom_capacities, accommodations_ids_by_type, accommodations_occupancy_by_days, available_room_sizes_by_days, accoms_types_room_sizes_min_max, year=year, group_id=len(temp_tourists_groups))
     # groups = generate_tourist_groups(tourists, group_sizes, family_or_non_family_by_purpose_dist, use_pandas=False)
     print("generate_tourist_groups: " + str(time.time() - start))
 
@@ -78,7 +78,7 @@ def generate_tourism(inbound_aggregates, outbound_aggregates, accom_capacities, 
     temp_tourists.update(tourists)
     tourists = temp_tourists
 
-    tourists = dict(sorted(tourists.items(),key=lambda x:x[0],reverse = False))
+    tourists = dict(sorted(tourists.items(), key=lambda x:x[0], reverse = False))
 
     temp_tourists_groups.extend(tourists_groups)
     tourists_groups = temp_tourists_groups
@@ -86,6 +86,8 @@ def generate_tourism(inbound_aggregates, outbound_aggregates, accom_capacities, 
     for day, ids in temp_tourists_groups_by_days.items():
         tourists_groups_by_days[day].extend(ids)
 
+    tourists_groups_by_days = {day: ids for day, ids in tourists_groups_by_days.items() if day > 0}
+            
     print("merge data from december of previous year with data from current year: " + str(time.time() - start))
 
     return tourists, tourists_groups, tourists_groups_by_days, accommodations_ids_by_type
@@ -228,13 +230,20 @@ def generate_accommodation(accom_capacities, visualise = False):
 
                 room_id += 1
 
-            for i in range(1, max_sample_size + 1): # mark room size as available, if exact or larger match is found (assignment will prefer exact room sizes, but if 1 is not found, larger room sizes are considered)
-                if i not in available_room_sizes:
-                    available_room_sizes[i] = []
+            for room_size in set(accom_rooms.values()):
+                if room_size not in available_room_sizes:
+                    available_room_sizes[room_size] = []
+
+                if accom_id not in available_room_sizes[room_size]:
+                    available_room_sizes[room_size].append(accom_id)
+                
+            # for i in range(1, max_sample_size + 1): # mark room size as available, if exact or larger match is found (assignment will prefer exact room sizes, but if 1 is not found, larger room sizes are considered)
+            #     if i not in available_room_sizes:
+            #         available_room_sizes[i] = []
             
-                if i >= min_sample_size:
-                    if accom_id not in available_room_sizes[i]:
-                        available_room_sizes[i].append(accom_id)
+            #     if i >= min_sample_size:
+            #         if accom_id not in available_room_sizes[i]:
+            #             available_room_sizes[i].append(accom_id)
 
             accom_rooms_by_id[accom_id] = OrderedDict(sorted(accom_rooms.items(), key=lambda kv: kv[1]))
 
@@ -415,7 +424,7 @@ def generate_group_sizes(group_size_dist, num_inbound_tourists, visualise=False)
 
     #     for size in range(min_size, max_size):
 
-def generate_matching_tourists_groups(tourists, groups, tourists_groups_by_day, matching_tourists_by_ids, matching_tourists_by_ages, group_sizes, quarter_dist, duration_dist, family_or_non_family_by_purpose_dist, accom_capacities, accommodations_ids_by_type, accommodations_occupancy_by_days, available_room_sizes_by_days, accoms_types_room_sizes_min_max, fam_exp_rate=0.1, non_fam_relative_exp_rate=0.1, min_ref_person_age=16, year=2021, exceed_year=False):       
+def generate_matching_tourists_groups(tourists, groups, tourists_groups_by_day, matching_tourists_by_ids, matching_tourists_by_ages, group_sizes, quarter_dist, duration_dist, family_or_non_family_by_purpose_dist, accom_capacities, accommodations_ids_by_type, accommodations_occupancy_by_days, available_room_sizes_by_days, accoms_types_room_sizes_min_max, fam_exp_rate=0.1, non_fam_relative_exp_rate=0.1, min_ref_person_age=16, year=2021, exceed_year=False, group_id=0):       
     fam_age_size_range = np.arange(101) # size range e.g. range(0, 100 + 1)
     fam_age_weights = np.exp(-fam_exp_rate * fam_age_size_range)
     fam_age_weights /= np.sum(fam_age_weights) # normalize the weights so they sum to 1
@@ -536,21 +545,25 @@ def generate_matching_tourists_groups(tourists, groups, tourists_groups_by_day, 
                     if remaining == 0:
                         break
 
-    ref_ids = np.array(list(reference_persons.keys()))
-    np.random.shuffle(ref_ids)
+    ref_persons_by_index = np.array(list(reference_persons.keys()))
+    # ref_persons_by_id = []
+
+    np.random.shuffle(ref_persons_by_index)
 
     group_sizes = sorted(group_sizes, reverse=True)
 
     time_sum = 0
     iter_count = 0
+    groups_with_missing_tourists_by_index = {}
     groups_with_missing_tourists = {}
+    new_groups = []
 
     for group_index, group_size in enumerate(group_sizes):
         iter_start = time.time()
         
         #start = time.time()
         group = groups[group_index]
-        reference_tourist_id = ref_ids[group_index]
+        reference_tourist_id = ref_persons_by_index[group_index]
         group = [reference_tourist_id]
         #print("returning group in iteration: " + str(time.time() - start))
         ref_tourist = tourists[reference_tourist_id]
@@ -576,7 +589,7 @@ def generate_matching_tourists_groups(tourists, groups, tourists_groups_by_day, 
             elif len(matching_tourists_ids) < (group_size-1): # not enough, these will have to be marked to be filled in at the end
                 group.extend(matching_tourists_ids.copy())
                 
-                groups_with_missing_tourists[group_index] = (group_size-1) - len(matching_tourists_ids)
+                groups_with_missing_tourists_by_index[group_index] = (group_size-1) - len(matching_tourists_ids)
 
                 matching_tourists_ids = []
                 matching_tourists_ages = []
@@ -654,32 +667,44 @@ def generate_matching_tourists_groups(tourists, groups, tourists_groups_by_day, 
 
         departure_day = arrival_day + duration
 
-        group_rooms_tourist_ids = []
-        group_accom = {}
+        if departure_day > 0:
+            group_rooms_tourist_ids = []
+            group_accom = {}
 
-        if group_complete:
-            group_rooms_tourist_ids, group_accom = assign_group_into_accommodation_and_room(group, group_size, group_index, accom_capacities, ref_tourist, arrival_day, departure_day, accommodations_ids_by_type, available_room_sizes_by_days, accommodations_occupancy_by_days, accoms_types_room_sizes_min_max, exceed_year)
+            if group_complete:
+                group_rooms_tourist_ids, group_accom = assign_group_into_accommodation_and_room(group, group_size, group_id, accom_capacities, ref_tourist, arrival_day, departure_day, accommodations_ids_by_type, available_room_sizes_by_days, accommodations_occupancy_by_days, accoms_types_room_sizes_min_max, exceed_year)
 
-        #start = time.time()
-        groups[group_index] = {"ids": group, "ref_tour_id": reference_tourist_id, "arr": arrival_day, "dep": departure_day, "purpose": ref_tourist["purpose"], "accom_type": ref_tourist["accom_type"], "sub_groups_ids": group_rooms_tourist_ids, "accom": group_accom}
-        #print("adding group to groups: " + str(time.time() - start))
+            #start = time.time()
+            new_group = {"ids": group, "ref_tour_id": reference_tourist_id, "arr": arrival_day, "dep": departure_day, "purpose": ref_tourist["purpose"], "accom_type": ref_tourist["accom_type"], "sub_groups_ids": group_rooms_tourist_ids, "accom": group_accom}
+            new_groups.append(new_group)
+            #print("adding group to groups: " + str(time.time() - start))
 
-        if group_complete:
-            for roomid, tourist_ids in enumerate(group_rooms_tourist_ids):
-                for tourist_id in tourist_ids:
-                    this_tourist = tourists[tourist_id]
-                    this_tourist["group_id"] = group_index
-                    this_tourist["sub_group_id"] = roomid
+            # ref_persons_by_id.append[ref_persons_by_index[group_index]]
 
-            for day in range(arrival_day, departure_day+1):
-                if exceed_year or day <= 365:
-                    tourists_groups_by_day[day].append(group_index)
-                else:
-                    break
+            if group_complete:
+                for roomid, tourist_ids in enumerate(group_rooms_tourist_ids):
+                    for tourist_id in tourist_ids:
+                        this_tourist = tourists[tourist_id]
+                        this_tourist["group_id"] = group_id
+                        this_tourist["sub_group_id"] = roomid
+
+                for day in range(arrival_day, departure_day+1):
+                    if day <= 365:
+                        tourists_groups_by_day[day].append(group_id)
+                    else:
+                        break
+
+            if group_index in groups_with_missing_tourists_by_index:
+                groups_with_missing_tourists[group_id] = groups_with_missing_tourists_by_index[group_index]
+
+            group_id += 1
+        else:
+            if group_index in groups_with_missing_tourists_by_index:
+                del groups_with_missing_tourists_by_index[group_index]
 
         iter_count += 1
-        duration = time.time() - iter_start
-        time_sum += duration
+        time_taken = time.time() - iter_start
+        time_sum += time_taken
         avg_time = time_sum / iter_count
 
         print("full iteration of iter count: " + str(iter_count) + ", group size: " + str(group_size) + ": time taken: " + str(duration) + ", average time: " + str(avg_time))
@@ -688,10 +713,13 @@ def generate_matching_tourists_groups(tourists, groups, tourists_groups_by_day, 
         matching_groups_non_empty = [matching_group for matching_group in matching_tourists_by_ids.values() if len(matching_group) > 0]
         remaining_tourists_ids = np.array([id for matching_group in matching_groups_non_empty for id in matching_group])
 
+        print("remaining_tourists_ids: " + str(remaining_tourists_ids))
+        print("groups with missing tourists: " + str(groups_with_missing_tourists))
+
         np.random.shuffle(remaining_tourists_ids)
 
-        for groupindex, num_missing_tourists in groups_with_missing_tourists.items():
-            group_dict = groups[groupindex]
+        for groupid, num_missing_tourists in groups_with_missing_tourists.items():
+            group_dict = new_groups[groupid]
             group = group_dict["ids"]
 
             sampled_ids = remaining_tourists_ids[:num_missing_tourists]
@@ -699,30 +727,32 @@ def generate_matching_tourists_groups(tourists, groups, tourists_groups_by_day, 
 
             group.extend(sampled_ids)
 
+            ref_tourist = tourists[group[0]]
+
             group_rooms_tourist_ids = []
             group_accom = {}
 
-            group_rooms_tourist_ids, group_accom = assign_group_into_accommodation_and_room(group, len(group), groupindex, accom_capacities, ref_tourist,  group_dict["arr"], group_dict["dep"], accommodations_ids_by_type, available_room_sizes_by_days, accommodations_occupancy_by_days, accoms_types_room_sizes_min_max, exceed_year)
-
+            group_rooms_tourist_ids, group_accom = assign_group_into_accommodation_and_room(group, len(group), groupid, accom_capacities, ref_tourist, group_dict["arr"], group_dict["dep"], accommodations_ids_by_type, available_room_sizes_by_days, accommodations_occupancy_by_days, accoms_types_room_sizes_min_max, exceed_year)
+            
             group_dict["sub_groups_ids"] = group_rooms_tourist_ids
             group_dict["accom"] = group_accom
 
             for roomid, tourist_ids in enumerate(group_rooms_tourist_ids):
                 for tourist_id in tourist_ids:
                     this_tourist = tourists[tourist_id]
-                    this_tourist["group_id"] = group_index
+                    this_tourist["group_id"] = groupid
                     this_tourist["sub_group_id"] = roomid
 
-            for day in range(arrival_day, departure_day+1):
-                if exceed_year or day <= 365:
-                    if group_index not in tourists_groups_by_day[day]:
-                        tourists_groups_by_day[day].append(group_index)
+            for day in range(group_dict["arr"], group_dict["dep"] + 1):
+                if day <= 365:
+                    if groupid not in tourists_groups_by_day[day]:
+                        tourists_groups_by_day[day].append(groupid)
                 else:
                     break
 
-    return groups, tourists, tourists_groups_by_day
+    return new_groups, tourists, tourists_groups_by_day
 
-def assign_group_into_accommodation_and_room(group, group_size, group_index, accom_capacities, ref_tourist, arrival_day, departure_day, accommodations_ids_by_type, available_room_sizes_by_days, accommodations_occupancy_by_days, accoms_types_room_sizes_min_max, exceed_year):
+def assign_group_into_accommodation_and_room(group, group_size, group_id, accom_capacities, ref_tourist, arrival_day, departure_day, accommodations_ids_by_type, available_room_sizes_by_days, accommodations_occupancy_by_days, accoms_types_room_sizes_min_max, exceed_year):
     group_clone = np.array(copy.deepcopy(group))
 
     # split into groups here
@@ -765,7 +795,7 @@ def assign_group_into_accommodation_and_room(group, group_size, group_index, acc
             # check if already picked accoms are also available for the second/third sub_group, etc
             # i.e. give preference to already picked accommodation. room not assigned here, but later (avoid double code / have 1 assignment process)
             # using "accommodations_occupancy_by_days" only because going through the rooms solely in the context of picked_accoms is still expected to be relatively fast
-            for acc_id in picked_accoms:
+            for acc_id in set(picked_accoms):
                 # accom rooms in acc_id for arrival_day, then need to check for all other days
                 # this section will not update the global collections but simply pick a room, if available
                 accom_rms = accommodations_occupancy_by_days[arrival_day][accom_type][acc_id] 
@@ -783,7 +813,7 @@ def assign_group_into_accommodation_and_room(group, group_size, group_index, acc
 
                         # traverse range from arrival day to departure day (bound by 31st Dec)
                         for day in range(arrival_day, departure_day + 1):
-                            if exceed_year or day <= 365: # as of now, only consider 1 full year
+                            if day <= 365: # as of now, only consider 1 full year
                                 picked_rm = accommodations_occupancy_by_days[day][accom_type][picked_accom_id][picked_room_id]
                                 if picked_rm[1] >= 0:
                                     picked_accom_id = -1
@@ -796,7 +826,7 @@ def assign_group_into_accommodation_and_room(group, group_size, group_index, acc
                         
                         if picked_room_id >= 0: # if reset means room is not available for rest of trip, if not reset, room is available and can exit immediately
                             # update group_accom with key: (group_id, sub_group_id) and value: (accom_id, room_id)
-                            group_accom[(group_index, sub_group_index, sub_group_size)] = (picked_accom_id, picked_room_id, picked_room_size)
+                            group_accom[(group_id, sub_group_index, sub_group_size)] = (picked_accom_id, picked_room_id, picked_room_size)
                             picked_accoms.append(picked_accom_id)
                             # print("picked from picked_accoms. accom: " + str(picked_accom_id) + ", room: " + str(picked_room_id))
                             break                    
@@ -810,8 +840,11 @@ def assign_group_into_accommodation_and_room(group, group_size, group_index, acc
             # using "available_room_sizes_by_days" to enable fast retrieval of accoms with available room sizes
             # the presence of accom_id for a particular room size, indicates that there is a room available, either for that size or larger
             for day in range(arrival_day, departure_day + 1):
-                if exceed_year or day <= 365: # as of now, only consider 1 full year
-                    accom_ids = available_room_sizes_by_days[day][accom_type][sub_group_size]
+                if day <= 365: # as of now, only consider 1 full year
+                    accom_ids = []
+                    if sub_group_size in available_room_sizes_by_days[day][accom_type]:
+                        accom_ids = available_room_sizes_by_days[day][accom_type][sub_group_size]
+                    
                     if iter_count == 0:
                         available_accoms = set(accom_ids) # get unique ids (all should be unique anyway)
                     else:
@@ -848,7 +881,7 @@ def assign_group_into_accommodation_and_room(group, group_size, group_index, acc
 
                             # traverse range from arrival day + 1 (as arrival day was used in initial check) and departure day (bound by 31st Dec)
                             for day in range(arrival_day + 1, departure_day + 1):
-                                if exceed_year or day <= 365: # as of now, only consider 1 full year
+                                if day <= 365: # as of now, only consider 1 full year
                                     picked_rm = accommodations_occupancy_by_days[day][accom_type][picked_accom_id][picked_room_id]
                                     if picked_rm[1] >= 0:
                                         picked_accom_id = -1
@@ -860,21 +893,22 @@ def assign_group_into_accommodation_and_room(group, group_size, group_index, acc
                                     break
 
                             if picked_room_id >= 0: # if reset means room is not available for rest of trip, if not reset, room is available and can exit immediately
+                            
                                 # update group_accom with key: (group_id, sub_group_id) and value: (accom_id, room_id)
-                                group_accom[(group_index, sub_group_index, sub_group_size)] = (picked_accom_id, room_id, picked_room_size)
+                                group_accom[(group_id, sub_group_index, sub_group_size)] = (picked_accom_id, room_id, picked_room_size)
                                 picked_accoms.append(picked_accom_id)
                                 # print("picked from general allocation. accom: " + str(picked_accom_id) + ", room: " + str(picked_room_id))
                                 break
 
                     pick_index += 1
             else:
-                accom_not_allocated[(group_index, sub_group_index)] = sub_group_room
+                accom_not_allocated[(group_id, sub_group_index)] = sub_group_room
                 # no_accom_found[(group_index, sub_group_index)] = sub_group_room
 
         if picked_room_id >= 0:
             # traverse range from arrival day and departure day (bound by 31st Dec) and update both collections 
             for day in range(arrival_day, departure_day + 1):
-                if exceed_year or day <= 365: # as of now, only consider 1 full year
+                if day <= 365: # as of now, only consider 1 full year
                     acc_rooms = accommodations_occupancy_by_days[day][accom_type][picked_accom_id]
 
                     another_available = False
@@ -892,11 +926,11 @@ def assign_group_into_accommodation_and_room(group, group_size, group_index, acc
                             break
                     
                     # Update "accommodations_occupancy_by_days"
-                    room_details = (picked_room_size, group_index, sub_group_index)
+                    room_details = (picked_room_size, group_id, sub_group_index)
 
                     if acc_rooms[picked_room_id][1] >= 0:
-                        print("problemos")
-
+                        print("problem")
+                    
                     # room_details above is not updated by reference, tuples are immutable, update explicitly
                     acc_rooms[picked_room_id] = room_details
 
@@ -904,7 +938,9 @@ def assign_group_into_accommodation_and_room(group, group_size, group_index, acc
 
                     # Update "available_room_sizes_by_days"
                     if not another_available:
-                        accom_ids = available_room_sizes_by_days[day][accom_type][sub_group_size] # get accom ids 
+                        accom_ids = []
+                        if sub_group_size in available_room_sizes_by_days[day][accom_type]:
+                            accom_ids = available_room_sizes_by_days[day][accom_type][sub_group_size] # get accom ids 
 
                         # this may be the case and is not a bug, i.e. some sizes may not have been sampled in the accommodation creation step
                         if picked_accom_id in accom_ids:
@@ -914,77 +950,47 @@ def assign_group_into_accommodation_and_room(group, group_size, group_index, acc
                 else:
                     break
         else:
-            room_not_allocated[(group_index, sub_group_index)] = sub_group_room
+            room_not_allocated[(group_id, sub_group_index)] = sub_group_room
             # no_room_found[(group_index, sub_group_index)] = sub_group_room
-
-    # check if any of the other allocated rooms have any space for any of the sub groups in the group
-    # if after this step any tourists are still not allocated, another fallback is required. for e.g. adding new rooms to allocate everyone
-    temp_room_not_allocated = copy.deepcopy(room_not_allocated)
-    temp_accom_not_allocated = copy.deepcopy(accom_not_allocated)
-    temp_not_allocated = temp_room_not_allocated
-    temp_not_allocated.update(temp_accom_not_allocated)
-
-    for grp_key, sub_grp in temp_not_allocated.items():
-        grp_ind = grp_key[0]
-        sub_grp_ind = grp_key[1]
-        not_allocated_group_room = group_rooms_tourist_ids[sub_grp_ind]
-        
-        ids_to_allocate = len(sub_grp)
-        ids_allocated = 0
-
-        temp_group_accom = copy.deepcopy(group_accom)
-        allocated_ids = []
-
-        for matched_key, matched_accom in temp_group_accom.items():
-            matched_grp_index, matched_sub_grp_index, matched_sub_grp_size = matched_key[0], matched_key[1], matched_key[2]
-            matched_accom_id, matched_room_id, matched_room_size = matched_accom[0], matched_accom[1], matched_accom[2]
-
-            if matched_sub_grp_size < matched_room_size:
-                spaces_to_allocate = matched_room_size - matched_sub_grp_size
-                group_room = group_rooms_tourist_ids[matched_sub_grp_index]
-
-                for i in range(ids_to_allocate + 1):
-                    if ids_allocated < ids_to_allocate and ids_allocated < spaces_to_allocate:
-                        new_room_member_id = sub_grp[ids_allocated]
-
-                        not_allocated_group_room.remove(new_room_member_id)
-                        group_room.append(new_room_member_id)
-                        allocated_ids.append(new_room_member_id)
-
-                        ids_allocated += 1
-                    else:
-                        break
-
-                del group_accom[matched_key]
-                group_accom[matched_grp_index, matched_sub_grp_index, matched_sub_grp_size + ids_allocated] = matched_accom
-        
-        # this would have already been deleted by reference
-        # if grp_key in room_not_allocated:
-        #     sub_group = room_not_allocated[grp_key]
-        # else:
-        #     sub_group = accom_not_allocated[grp_key]
-
-        # for allocated_id in allocated_ids:
-        #     sub_group.remove(allocated_id)
 
     # if any tourists are still not allocated at this point, create new rooms in a random accommodation
     # if any other accommodations have been assigned in this context i.e. for other sub groups within group, then give those accommodations priority
     # if not, pick a random accommodation (by accom_type), and use that.
-    if len(room_not_allocated) > 0 or len(accom_not_allocated):
+    if len(room_not_allocated) > 0 or len(accom_not_allocated) > 0:
         temp_not_allocated = room_not_allocated
         temp_not_allocated.update(accom_not_allocated)
 
         for grp_key, sub_grp in temp_not_allocated.items():
-            # no_room_found[grp_key] = sub_grp
-            if len(picked_accoms) > 0:
-                # pick a random accom and add as many rooms as necessary in it
-                picked_accoms = np.array(picked_accoms)
-                random_accom_id = np.random.choice(picked_accoms, size=1)[0]
+            if len(sub_grp) > 0: # sub_grp may be empty by now as it the tourist might have already been assigned to anothe room prior
+                # no_room_found[grp_key] = sub_grp
+                if len(picked_accoms) > 0:
+                    # pick a random accom and add as many rooms as necessary in it
+                    picked_accoms = np.array(picked_accoms)
+                    random_accom_id = np.random.choice(picked_accoms, size=1)[0]
+                else:
+                    all_accoms_by_type = accommodations_ids_by_type[accom_type]
+
+                    accom_ids_by_type = np.array(list(all_accoms_by_type.keys()))
+
+                    random_accom_id = np.random.choice(accom_ids_by_type, size=1)[0]
 
                 arr_day_only = accommodations_occupancy_by_days[arrival_day][accom_type][random_accom_id]
                 arr_day_only_temp = dict(sorted(arr_day_only.items()))
 
                 last_room_id = list(arr_day_only_temp)[-1]
+
+                # arrival day already taken care of
+                for day in range(arrival_day + 1, departure_day + 1):
+                    if day <= 365: # as of now, only consider 1 full year
+                        each_day = accommodations_occupancy_by_days[day][accom_type][random_accom_id]
+                        each_day_temp = dict(sorted(each_day.items()))
+                        temp_last_room_id = list(each_day_temp)[-1]
+
+                        if temp_last_room_id > last_room_id:
+                            last_room_id = temp_last_room_id
+                        # each_day[new_room_id] = (new_room_size, grp_key[0], grp_key[1])
+                    else:
+                        break
 
                 new_room_id = last_room_id + 1
                 new_room_size = len(sub_grp)
@@ -993,49 +999,15 @@ def assign_group_into_accommodation_and_room(group, group_size, group_index, acc
                 arr_day_only[new_room_id] = (new_room_size, grp_key[0], grp_key[1])
                 # arrival day already taken care of
                 for day in range(arrival_day + 1, departure_day + 1):
-                    if exceed_year or day <= 365: # as of now, only consider 1 full year
+                    if day <= 365: # as of now, only consider 1 full year
                         each_day = accommodations_occupancy_by_days[day][accom_type][random_accom_id]
-
-                        each_day[new_room_id] = (new_room_size, grp_key[0], grp_key[1])
-                    else:
-                        break
-                
-                accom_by_type = accommodations_ids_by_type[accom_type][random_accom_id]
-
-                accom_by_type[new_room_id] = new_room_size
-
-                accom_by_type = OrderedDict(sorted(accom_by_type.items(), key=lambda kv: kv[1]))
-
-                accommodations_ids_by_type[accom_type][random_accom_id] = accom_by_type
-            else:
-                all_accoms_by_type = accommodations_ids_by_type[accom_type]
-
-                accom_ids_by_type = np.array(list(all_accoms_by_type.keys()))
-
-                random_accom_id = np.random.choice(accom_ids_by_type, size=1)[0]
-
-                arr_day_only = accommodations_occupancy_by_days[arrival_day][accom_type][random_accom_id]
-                arr_day_only_temp = dict(sorted(arr_day_only.items()))
-
-                last_room_id = list(arr_day_only_temp)[-1]
-
-                new_room_id = last_room_id + 1
-                new_room_size = len(sub_grp)
-
-                group_accom[(grp_key[0], grp_key[1], new_room_size)] = (random_accom_id, new_room_id, new_room_size)
-                arr_day_only[new_room_id] = (new_room_size, grp_key[0], grp_key[1])
-                # arrival day already taken care of
-                for day in range(arrival_day + 1, departure_day + 1):
-                    if exceed_year or day <= 365: # as of now, only consider 1 full year
-                        each_day = accommodations_occupancy_by_days[day][accom_type][random_accom_id]
-
                         each_day[new_room_id] = (new_room_size, grp_key[0], grp_key[1])
                     else:
                         break
 
                 accom_by_type = accommodations_ids_by_type[accom_type][random_accom_id]
 
-                accom_by_type[new_room_id] = new_room_size
+                accom_by_type[new_room_id] = new_room_size # the only reason why new_room_id would already exist, is that it would have already been set for a different time range
 
                 accom_by_type = OrderedDict(sorted(accom_by_type.items(), key=lambda kv: kv[1]))
 
