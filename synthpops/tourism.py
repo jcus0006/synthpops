@@ -554,16 +554,19 @@ def generate_matching_tourists_groups(tourists, groups, tourists_groups_by_day, 
 
     time_sum = 0
     iter_count = 0
-    groups_with_missing_tourists_by_index = {}
-    groups_with_missing_tourists = {}
+    groups_with_missing_tourists_by_actualindex = {}
+    # groups_with_missing_tourists = {}
     new_groups = []
-
-    for group_index, group_size in enumerate(group_sizes):
+    groups_ids_by_actualindex = {}
+    actual_group_index = 0 # new group index for new_groups (this doesn't take into consideration the outer context, only this context)
+    # group_id is passed as zero for prev december cases, and last id for december case, for jan 1 onwards
+    # original_group_index represents the original group_sizes index for each context (i.e. both prev december case, and normal year case)
+    for original_group_index, group_size in enumerate(group_sizes):
         iter_start = time.time()
         
         #start = time.time()
-        group = groups[group_index]
-        reference_tourist_id = ref_persons_by_index[group_index]
+        group = groups[original_group_index]
+        reference_tourist_id = ref_persons_by_index[original_group_index]
         group = [reference_tourist_id]
         #print("returning group in iteration: " + str(time.time() - start))
         ref_tourist = tourists[reference_tourist_id]
@@ -589,7 +592,7 @@ def generate_matching_tourists_groups(tourists, groups, tourists_groups_by_day, 
             elif len(matching_tourists_ids) < (group_size-1): # not enough, these will have to be marked to be filled in at the end
                 group.extend(matching_tourists_ids.copy())
                 
-                groups_with_missing_tourists_by_index[group_index] = (group_size-1) - len(matching_tourists_ids)
+                groups_with_missing_tourists_by_actualindex[actual_group_index] = (group_size-1) - len(matching_tourists_ids)
 
                 matching_tourists_ids = []
                 matching_tourists_ages = []
@@ -677,6 +680,8 @@ def generate_matching_tourists_groups(tourists, groups, tourists_groups_by_day, 
             #start = time.time()
             new_group = {"ids": group, "ref_tour_id": reference_tourist_id, "arr": arrival_day, "dep": departure_day, "purpose": ref_tourist["purpose"], "accom_type": ref_tourist["accom_type"], "sub_groups_ids": group_rooms_tourist_ids, "accom": group_accom}
             new_groups.append(new_group)
+
+            groups_ids_by_actualindex[actual_group_index] = group_id
             #print("adding group to groups: " + str(time.time() - start))
 
             # ref_persons_by_id.append[ref_persons_by_index[group_index]]
@@ -694,13 +699,13 @@ def generate_matching_tourists_groups(tourists, groups, tourists_groups_by_day, 
                     else:
                         break
 
-            if group_index in groups_with_missing_tourists_by_index:
-                groups_with_missing_tourists[group_id] = groups_with_missing_tourists_by_index[group_index]
-
+            # if group_index in groups_with_missing_tourists_by_index:
+            #     groups_with_missing_tourists[group_id] = groups_with_missing_tourists_by_index[group_index]
+            actual_group_index += 1
             group_id += 1
         else:
-            if group_index in groups_with_missing_tourists_by_index:
-                del groups_with_missing_tourists_by_index[group_index]
+            if original_group_index in groups_with_missing_tourists_by_actualindex:
+                del groups_with_missing_tourists_by_actualindex[actual_group_index]
 
         iter_count += 1
         time_taken = time.time() - iter_start
@@ -709,17 +714,19 @@ def generate_matching_tourists_groups(tourists, groups, tourists_groups_by_day, 
 
         print("full iteration of iter count: " + str(iter_count) + ", group size: " + str(group_size) + ": time taken: " + str(duration) + ", average time: " + str(avg_time))
 
-    if sum(list(groups_with_missing_tourists.values())) > 0: # handle groups that still need some tourists to be assigned to them to be full, in this case purely at random
+    if sum(list(groups_with_missing_tourists_by_actualindex.values())) > 0: # handle groups that still need some tourists to be assigned to them to be full, in this case purely at random
         matching_groups_non_empty = [matching_group for matching_group in matching_tourists_by_ids.values() if len(matching_group) > 0]
         remaining_tourists_ids = np.array([id for matching_group in matching_groups_non_empty for id in matching_group])
 
         print("remaining_tourists_ids: " + str(remaining_tourists_ids))
-        print("groups with missing tourists: " + str(groups_with_missing_tourists))
+        print("groups indices with missing tourists: " + str(groups_with_missing_tourists_by_actualindex))
 
         np.random.shuffle(remaining_tourists_ids)
 
-        for groupid, num_missing_tourists in groups_with_missing_tourists.items():
-            group_dict = new_groups[groupid]
+        for actual_group_index, num_missing_tourists in groups_with_missing_tourists_by_actualindex.items():
+            groupid = groups_ids_by_actualindex[actual_group_index]
+
+            group_dict = new_groups[actual_group_index]
             group = group_dict["ids"]
 
             sampled_ids = remaining_tourists_ids[:num_missing_tourists]
