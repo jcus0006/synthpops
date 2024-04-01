@@ -7,24 +7,28 @@ pop_sizes = sc.objdict(
     medium_large = 12e3,
     large        = 20e3,
     malta        = 519562,
-    ten_k        = 10e3
+    ten_k        = 10e3,
+    hundred_k    = 100e3
 )
 
 student_teacher_ratio = sc.objdict(
     small = 7.5, # 1k
     ten_k = 11, # 10k
+    hundred_k = 10.5, # 100k
     malta = 10 # 519562
 )
 
 student_allstaff_ratio = sc.objdict(
     small = 3.9, # 1k
-    ten_k = 5.3,
+    ten_k = 5.3, # 10k
+    hundred_k = 5.25, # 100l
     malta = 5.2 # 519562
 )
 
 total_inbound_tourists_override = sc.objdict(
     small = 4000,
     ten_k = 40000,
+    hundred_k = 400000,
     malta = None
 )
 

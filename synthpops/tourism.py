@@ -174,14 +174,14 @@ def generate_accommodation(accom_capacities, visualise = False):
                         if sum(bed_counts) == total_beds:
                             break              
                             
-        if visualise:
-            plt.figure(index+1)
-            plt.hist(bed_counts, bins=30)
-            plt.xlabel("Total number of beds")
-            plt.ylabel("Frequency")
-            plt.title("Distribution of number of beds")
+        # if visualise:
+        #     plt.figure(index+1)
+        #     plt.hist(bed_counts, bins=30)
+        #     plt.xlabel("Total number of beds")
+        #     plt.ylabel("Frequency")
+        #     plt.title("Distribution of number of beds")
 
-            plt.show(block=False)
+        #     plt.show(block=False)
 
         # create a dictionary of accom IDs and their corresponding bed counts
         accom_beds = {i: bed_counts[i] for i in range(total_units)}
@@ -249,6 +249,15 @@ def generate_accommodation(accom_capacities, visualise = False):
 
             occupancy_rooms_by_id[accom_id] = {k: v for k, v in sorted(accom_rooms_occupancy.items(), key=lambda item: item[1][0])} # sort by room_size (required for sequential access later)
 
+        if visualise:
+            plt.figure(index+1)
+            plt.hist(bed_counts, bins=30)
+            plt.xlabel("Total number of beds")
+            plt.ylabel("Frequency")
+            plt.title("Distribution of number of beds")
+
+            plt.show(block=False)
+            
         accoms_types_room_sizes_min_max[accom_type] = (accom_type_min, accom_type_max)
         accomodations_ids_by_type[accom_type] = accom_rooms_by_id
         accommodations_occupancy_by_ids_by_type[accom_type] = occupancy_rooms_by_id

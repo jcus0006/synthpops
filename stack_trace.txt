@@ -1,8 +1,0 @@
-Traceback (most recent call last):
-  File "c:\AppsPy\synthpops\synthpops\pop.py", line 484, in generate
-    tourists, tourists_groups, tourists_groups_by_days, accommodations_ids_by_type = trsm.generate_tourism(inbound_aggregates, outbound_aggregates, accom_capacities, group_size_dist, family_or_non_family_by_purpose_dist, gender_dist, age_groups_dist, quarter_dist, duration_dist, accom_type_dist, purpose_dist, 2021, self.total_inbound_tourists_override, False)
-  File "c:\AppsPy\synthpops\synthpops\tourism.py", line 53, in generate_tourism
-    temp_tourists_groups, temp_tourists, temp_tourists_groups_by_days = generate_matching_tourists_groups(temp_tourists, temp_tourists_groups, tourists_groups_by_day, temp_matching_tourists_ids, temp_matching_tourists_ages, temp_group_sizes, quarter_dist, duration_dist, family_or_non_family_by_purpose_dist, accom_capacities, accommodations_ids_by_type, accommodations_occupancy_by_days, available_room_sizes_by_days, accoms_types_room_sizes_min_max, year=year, exceed_year=True)
-  File "c:\AppsPy\synthpops\synthpops\tourism.py", line 727, in generate_matching_tourists_groups
-    groupid = groups_ids_by_actualindex[actual_group_index]
-KeyError: 723

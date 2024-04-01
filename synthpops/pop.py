@@ -835,7 +835,7 @@ class Pop(sc.prettyobj):
             # Pre-compute the CDFs for each age group's bmi percentage
             bmi_male_cdfs = [np.cumsum([normal, overweight, obese]) for _, _, normal, overweight, obese in bmi_byage_male_distribution]
 
-        if education_byage_female_distribution is not None:
+        if bmi_byage_female_distribution is not None:
             # Create a lookup table to map age ranges to bmi percentages
             age_range_to_bmi_female_percentages = [(min_age, max_age, normal, overweight, obese) for min_age, max_age, normal, overweight, obese in bmi_byage_female_distribution]
             # Pre-compute the CDFs for each age group's bmi percentage
