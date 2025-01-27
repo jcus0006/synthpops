@@ -6,16 +6,15 @@ Prem K, Cook AR, Jit M (2017) Projecting social contact matrices in 152 countrie
 
 Data for Malta added from these sources:
 
-https://nso.gov.mt/themes_publications/census-of-population-andhousing-2011-final-report/
-https://nso.gov.mt/themes_publications/census-preliminary-report/
-https://nso.gov.mt/wp-content/uploads/News2021_122.pdf
-https://nso.gov.mt/wp-content/uploads/News2021_112.pdf/
-https://nso.gov.mt/wp-content/uploads/News2021_173.pdf/
-https://nso.gov.mt/wp-content/uploads/News2021_232.pdf/
-https://nso.gov.mt/labour-force-survey-q4-2021/
-https://nso.gov.mt/pre-primary-primary-and-secondary-formaleducation-2020-2021/
-https://nso.gov.mt/students-in-post-secondary-and-tertiaryeducation-2020-2021/
-https://nso.gov.mt/wp-content/uploads/News2022_206.pdf
-https://www.mta.com.mt/en/file.aspx?f=34248
-H. Schänzel and I. Yeoman, “Trends in family tourism,” Journal of Tourism Futures,
-vol. 1, pp. 141–147, Mar. 2015. doi: 10.1108/JTF-12-2014-0006.
+- https://nso.gov.mt/themes_publications/census-of-population-andhousing-2011-final-report/
+- https://nso.gov.mt/themes_publications/census-preliminary-report/
+- https://nso.gov.mt/wp-content/uploads/News2021_122.pdf
+- https://nso.gov.mt/wp-content/uploads/News2021_112.pdf/
+- https://nso.gov.mt/wp-content/uploads/News2021_173.pdf/
+- https://nso.gov.mt/wp-content/uploads/News2021_232.pdf/
+- https://nso.gov.mt/labour-force-survey-q4-2021/
+- https://nso.gov.mt/pre-primary-primary-and-secondary-formaleducation-2020-2021/
+- https://nso.gov.mt/students-in-post-secondary-and-tertiaryeducation-2020-2021/
+- https://nso.gov.mt/wp-content/uploads/News2022_206.pdf
+- https://www.mta.com.mt/en/file.aspx?f=34248
+- H. Schänzel and I. Yeoman, “Trends in family tourism,” Journal of Tourism Futures, vol. 1, pp. 141–147, Mar. 2015. doi: 10.1108/JTF-12-2014-0006.
