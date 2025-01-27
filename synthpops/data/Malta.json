@@ -1,7 +1,18 @@
 {
   "location_name": "Malta",
   "data_provenance_notices": [],
-  "reference_links": ["http://www.sdnp.org.mw/Education2010/Edu-system.html", "https://www.epdc.org/sites/default/files/documents/EPDC_NEP_2018_Malawi.pdf", "https://www.ilo.org/wcmsp5/groups/public/---ed_emp/---emp_ent/---led/documents/publication/wcms_205845.pdf", "https://www.genesis-analytics.com/uploads/downloads/Malawi_MSME-Survey-2020-05-22.pdf"],
+  "reference_links": [
+    "https://nso.gov.mt/themes_publications/census-of-population-andhousing-2011-final-report/",
+    "https://nso.gov.mt/themes_publications/census-preliminary-report/",
+    "https://nso.gov.mt/wp-content/uploads/News2021_122.pdf",
+    "https://nso.gov.mt/wp-content/uploads/News2021_112.pdf/",
+    "https://nso.gov.mt/wp-content/uploads/News2021_173.pdf/",
+    "https://nso.gov.mt/wp-content/uploads/News2021_232.pdf/",
+    "https://nso.gov.mt/labour-force-survey-q4-2021/",
+    "https://nso.gov.mt/pre-primary-primary-and-secondary-formaleducation-2020-2021/",
+    "https://nso.gov.mt/students-in-post-secondary-and-tertiaryeducation-2020-2021/",
+    "https://nso.gov.mt/wp-content/uploads/News2022_206.pdf"
+  ],
   "citations": [],
   "notes": ["Secondary school age ranges are unclear. Most sources indicate an 8-4-4 year form of education, however if students take longer to graduate from secondary school then 14-17 years old may be too narrow an age range."],
   "parent": null,
